@@ -31,10 +31,10 @@ struct_tph      gv_stru_tph;  // var structure for T, P, H
 uint64_t        gv_sleep_time;
 struct tm       gv_tist;      // time stamp
 
-
 RTC_DATA_ATTR uint8_t gv_sleep_count = 0;
 
 //=================================================================================================
+
 char gf_byte2char(uint8_t lv_byte1){   // translate 0xBA => 'A'
   uint8_t lv_b1 = lv_byte1 & 0x0F;
   if (lv_b1>9) lv_b1 = lv_b1+55;
@@ -276,7 +276,7 @@ void setup() {
   gf_prm_cpu_info();
   Serial.println("=============== Start Setup =================");
   // pinMode(LED, OUTPUT);
-  pinMode(A1, INPUT);
+  pinMode(A0, INPUT);
   analogSetAttenuation(ADC_11db);
   Wire.begin();
 
