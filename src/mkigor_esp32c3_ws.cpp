@@ -4,8 +4,8 @@
 #include "time.h"
 #include <ThingSpeak.h>
 #include "Adafruit_VEML7700.h"
-#include "bme280.h"
 #include "mydef.h"
+#include <mkigor_bme280.h>
 
 WiFiClient        wifi_client;
 bme280            bme;
@@ -169,14 +169,14 @@ float gf_Pa2mmHg(float pressure) {  // convert Pa to mmHg
 }
 
 void gf_meas_tphl() {
-  bme.f_do_1_meas();
+  bme.bme_do1meas();
   delay(200);
   for (uint8_t i = 0; i < 100; i++) {
-    if (bme.f_bme_is_meas()) delay(10);
+    if (bme.bme_is_meas()) delay(10);
     else break;
   }
 
-  gv_stru_tph = bme.f_read_TPH();
+  gv_stru_tph = bme.bme_read_TPH();
   gv_bme_t = ((float)(gv_stru_tph.temp1)) / 100;
   gv_bme_p = gf_Pa2mmHg(((float)(gv_stru_tph.pres1)) / 100);
   gv_bme_h = ((float)(gv_stru_tph.humi1)) / 1000;
@@ -281,7 +281,7 @@ void setup() {
   Wire.begin();
 
   Serial.print("Check a bme280 => "); // check bme280 and SW reset
-  uint8_t k = bme.f_check_bme();
+  uint8_t k = bme.bme_check();
   if (k == 0) Serial.print("not found, check cables.\n");
   else {
     gf_prn_byte(k);
