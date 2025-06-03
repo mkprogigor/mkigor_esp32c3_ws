@@ -19,9 +19,9 @@ Adafruit_VEML7700 veml;
 
 #include "mydef.h"
 
-static char ssid[] = WIFI_SSID;
-static char pass[] = WIFI_PASS;
-static unsigned long my_channel_num = 1059748;
+static const char ssid[] = WIFI_SSID;
+static const char pass[] = WIFI_PASS;
+static const unsigned long my_channel_num = 1059748;
 static const char write_api_key[] = MYTS_WR_APIKEY;
 static const char read_api_key[]  = MYTS_RD_APIKEY;
 
