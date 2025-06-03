@@ -164,6 +164,7 @@ void setup() {
 
   gv_sleep_time = 600000000;    //  Light sleep mode time = 600 sec = 10 min
   // gv_sleep_time = 15000000;
+  esp_sleep_enable_timer_wakeup(gv_sleep_time);
 
   Serial.println("===============  End  Setup =================");
 }
@@ -173,7 +174,6 @@ void setup() {
 void loop() {
 
   Serial.print("Sleep Count = ");   Serial.println(gv_sleep_count);
-  esp_sleep_enable_timer_wakeup(gv_sleep_time);
 
   gf_wifi_con();
   gf_meas_tphl();
