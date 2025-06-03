@@ -17,14 +17,6 @@ WiFiClient        wifi_client;
 bme280            bme;
 Adafruit_VEML7700 veml;
 
-#include "mydef.h"
-
-static const char ssid[] = WIFI_SSID;
-static const char pass[] = WIFI_PASS;
-static const unsigned long my_channel_num = 1059748;
-static const char write_api_key[] = MYTS_WR_APIKEY;
-static const char read_api_key[]  = MYTS_RD_APIKEY;
-
 static float    gv_bme_p = 0;
 static float    gv_bme_t = 0;
 static float    gv_bme_h = 0;
@@ -36,31 +28,6 @@ struct tm       gv_tist;      // time stamp structure from time.h
 RTC_DATA_ATTR uint8_t gv_sleep_count = 0;
 
 //=================================================================================================
-
-bool gf_wifi_con() {   // Connecting to wifi with SSID PASS 
-  if (WiFi.status() == WL_CONNECTED)  {
-    Serial.print(WiFi.localIP());
-    Serial.println(" => conected.\n");
-    return true;
-  }
-  else  {
-    WiFi.begin(ssid, pass);
-    Serial.print("Connecting to WiFi => ");
-    for (u8_t i = 0; i < 16; ++i) {
-      if (WiFi.status() != WL_CONNECTED) {
-        Serial.print("? ");
-        delay(1000);
-      }
-      else {
-        Serial.print(WiFi.localIP());
-        Serial.println(" => conected.\n");
-        return true;
-      }
-    }
-    Serial.println(" WiFi didn't connect.\n");
-    return false;
-  }
-}
 
 void gf_meas_tphl() {
   bme.bme_do1meas();
