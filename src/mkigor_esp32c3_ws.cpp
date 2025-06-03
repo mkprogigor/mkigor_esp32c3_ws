@@ -4,7 +4,6 @@ by Igor Mkprog, mkprogigor@gmail.com
 
 V0.1 from 08.05.2025
 ************************************************************************************/
-
 #include <Arduino.h>
 #include <WiFi.h>
 #include <Wire.h>
@@ -12,38 +11,36 @@ V0.1 from 08.05.2025
 #include <ThingSpeak.h>
 #include <Adafruit_VEML7700.h>
 #include <mkigor_bme280.h>
-#include "mydef.h"
-#include "mkigor_std.cpp"
+#include <mkigor_std.h>
 
 WiFiClient        wifi_client;
 bme280            bme;
 Adafruit_VEML7700 veml;
 
-char ssid[] = WIFI_SSID;
-char pass[] = WIFI_PASS;
-unsigned long my_channel_num = 1059748;
-const char write_api_key[] = MYTS_WR_APIKEY;
-const char read_api_key[]  = MYTS_RD_APIKEY;
+#include "mydef.h"
+
+static char ssid[] = WIFI_SSID;
+static char pass[] = WIFI_PASS;
+static unsigned long my_channel_num = 1059748;
+static const char write_api_key[] = MYTS_WR_APIKEY;
+static const char read_api_key[]  = MYTS_RD_APIKEY;
 
 static float    gv_bme_p = 0;
 static float    gv_bme_t = 0;
 static float    gv_bme_h = 0;
 static float    gv_lux_a = 0;
-static float    gv_vbat  = 0;
-#define gk_vbat 5.8
-
+static float    gv_vbat  = 5.8;
 struct_tph      gv_stru_tph;  // var structure for T, P, H
 uint64_t        gv_sleep_time;
-struct tm       gv_tist;      // time stamp structure
-
+struct tm       gv_tist;      // time stamp structure from time.h
 RTC_DATA_ATTR uint8_t gv_sleep_count = 0;
 
 //=================================================================================================
 
-boolean gf_wifi_con() {
+bool gf_wifi_con() {   // Connecting to wifi with SSID PASS 
   if (WiFi.status() == WL_CONNECTED)  {
     Serial.print(WiFi.localIP());
-    Serial.print(" => Conected\n\n");
+    Serial.println(" => conected.\n");
     return true;
   }
   else  {
@@ -52,21 +49,17 @@ boolean gf_wifi_con() {
     for (u8_t i = 0; i < 16; ++i) {
       if (WiFi.status() != WL_CONNECTED) {
         Serial.print("? ");
-        vTaskDelay(1000);
+        delay(1000);
       }
       else {
-        Serial.println(WiFi.localIP());
-        Serial.println();
+        Serial.print(WiFi.localIP());
+        Serial.println(" => conected.\n");
         return true;
       }
     }
     Serial.println(" WiFi didn't connect.\n");
     return false;
   }
-}
-
-float gf_Pa2mmHg(float pressure) {  // convert Pa to mmHg
-	return (float)(pressure * 0.00750061683f);
 }
 
 void gf_meas_tphl() {
@@ -217,7 +210,7 @@ void loop() {
 
   gf_wifi_con();
   gf_meas_tphl();
-  gv_vbat = (analogRead(A0) * gk_vbat) / 4096;
+  gv_vbat = (analogRead(A0) * gv_vbat) / 4096;
   Serial.print("Vbat = ");  Serial.println(gv_vbat);
   delay(500);
   gf_send2ts();
