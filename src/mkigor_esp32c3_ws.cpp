@@ -1,18 +1,23 @@
+/************************************************************************************
+A small project of weathe station on esp32 C3 + BME280 + VEML7700
+by Igor Mkprog, mkprogigor@gmail.com
+
+V0.1 from 08.05.2025
+************************************************************************************/
+
 #include <Arduino.h>
 #include <WiFi.h>
 #include <Wire.h>
-#include "time.h"
+#include <time.h>
 #include <ThingSpeak.h>
-#include "Adafruit_VEML7700.h"
-#include "mydef.h"
+#include <Adafruit_VEML7700.h>
 #include <mkigor_bme280.h>
+#include "mydef.h"
+#include "mkigor_std.cpp"
 
 WiFiClient        wifi_client;
 bme280            bme;
 Adafruit_VEML7700 veml;
-
-#define GD_ENABLE_SLEEP 0 // 1 = enable sleep 15 sec
-#define LED 8
 
 char ssid[] = WIFI_SSID;
 char pass[] = WIFI_PASS;
@@ -29,48 +34,11 @@ static float    gv_vbat  = 0;
 
 struct_tph      gv_stru_tph;  // var structure for T, P, H
 uint64_t        gv_sleep_time;
-struct tm       gv_tist;      // time stamp
+struct tm       gv_tist;      // time stamp structure
 
 RTC_DATA_ATTR uint8_t gv_sleep_count = 0;
 
 //=================================================================================================
-
-char gf_byte2char(uint8_t lv_byte1){   // translate 0xBA => 'A'
-  uint8_t lv_b1 = lv_byte1 & 0x0F;
-  if (lv_b1>9) lv_b1 = lv_b1+55;
-  else         lv_b1 = lv_b1+48;
-  return lv_b1;
-}
-
-void gf_prn_byte(uint8_t lv_byte){   // print byte like "FCh "
-  Serial.print(gf_byte2char(lv_byte>>4));
-  Serial.print(gf_byte2char(lv_byte));
-  Serial.print("h ");
-}
-
-void gf_prm_cpu_info(){
-  Serial.println("=====================  Start MCU Info  =====================");
-  esp_chip_info_t chip_info;
-  esp_chip_info(&chip_info);
-  Serial.print("Chip Model      = "); Serial.println( chip_info.model);
-  Serial.print("Cores           = "); Serial.println( chip_info.cores);
-  Serial.print("Revision number = "); Serial.println( chip_info.revision);
-  Serial.print("Full rev.number = "); Serial.println( chip_info.full_revision);
-  Serial.print("Features, BIN   = "); Serial.println( chip_info.features, BIN);
-  Serial.print("CPU Freq, MHz   = ");   Serial.println(getCpuFrequencyMhz());
-  Serial.print("XTAL Freq,  MHz = ");   Serial.println(getXtalFrequencyMhz());
-  Serial.print("APB Freq, Hz    = ");   Serial.println(getApbFrequency());
-  Serial.print("esp_get_idf_version()              = ");  Serial.println(esp_get_idf_version());
-  Serial.print("esp_get_free_heap_size()           = ");  Serial.println(esp_get_free_heap_size());
-  Serial.print("heap_caps_get_free_size()          = ");  Serial.println(heap_caps_get_free_size(MALLOC_CAP_INTERNAL));
-  Serial.print("heap_caps_get_largest_free_block() = ");  Serial.println(heap_caps_get_largest_free_block(MALLOC_CAP_INTERNAL));
-  size_t spiram_size = heap_caps_get_total_size(MALLOC_CAP_SPIRAM);
-  if (spiram_size) {
-    Serial.print("PSRAM Size: "); Serial.println(spiram_size);
-  }
-  else Serial.println("No PSRAM detected.");
-  Serial.println("=====================   End MCU Info   =====================\n");
-}
 
 boolean gf_wifi_con() {
   if (WiFi.status() == WL_CONNECTED)  {
@@ -94,73 +62,6 @@ boolean gf_wifi_con() {
     }
     Serial.println(" WiFi didn't connect.\n");
     return false;
-  }
-}
-
-void gf_wifi_scan() {
-  Serial.println("Scan WiFi networks =>");
-  u8_t n = WiFi.scanNetworks();
-  if (n > 0) {
-    for (u8_t i = 0; i < n; ++i) {  // Print SSID and RSSI for each network found
-      Serial.print(i + 1);
-      Serial.print(": SSID=");
-      Serial.print(WiFi.SSID(i));
-      Serial.print(",\tRSSI=(");
-      Serial.print(WiFi.RSSI(i));
-      Serial.print("),\tEncr.= " );
-      Serial.println(WiFi.encryptionType(i));
-    }
-  }
-  else Serial.println("No networks found.");
-}
-
-void gf_wifi_status() {
-  Serial.println("===================== WiFi Status Info =====================");
-  byte tv_wifist = WiFi.status();
-  Serial.print(tv_wifist); Serial.print(" - ");
-  switch (tv_wifist)  {
-  case WL_CONNECTED:
-    Serial.println("WL_CONNECTED");
-    break;
-    case WL_NO_SHIELD:
-    Serial.println("WL_NO_SHIELD");
-    break;
-    case WL_IDLE_STATUS:
-    Serial.println("WL_IDLE_STATUS");
-    break;
-    case WL_CONNECT_FAILED:
-    Serial.println("WL_CONNECT_FAILED");
-    break;
-    case WL_NO_SSID_AVAIL:
-    Serial.println("WL_NO_SSID_AVAIL");
-    break;
-    case WL_SCAN_COMPLETED:
-    Serial.println("WL_SCAN_COMPLETED");
-    break;
-    case WL_CONNECTION_LOST:
-    Serial.println("WL_CONNECTION_LOST");
-    break;
-    case WL_DISCONNECTED:
-    Serial.println("WL_DISCONNECTED");
-    break;
-    default:
-    Serial.println("undefine.");
-    break;
-  }
-  if (tv_wifist == 3)  {
-    Serial.print("IP "); Serial.print(WiFi.localIP());
-    Serial.print(", MASK "); Serial.print(WiFi.subnetMask());
-    Serial.print(", GATE "); Serial.print(WiFi.gatewayIP());
-    Serial.print(", DNS  "); Serial.print(WiFi.dnsIP());
-    Serial.print(", MAC: ");
-    uint8_t mac[6];
-    WiFi.macAddress(mac);
-    for (uint8_t i = 6; i > 0; i--) {
-      Serial.print(mac[i-1],HEX); Serial.print(":");
-    }
-    Serial.println();
-    gf_wifi_scan();
-    Serial.println("=================== End WiFi Status Info ===================");
   }
 }
 
@@ -268,8 +169,9 @@ void gf_veml_disp() {
 }
 
 //=================================================================================================
+
 void setup() {
-  setCpuFrequencyMhz(80); //  must be First. following frequencies as valid values:
+  setCpuFrequencyMhz(80); //  must be First
 
   Serial.begin(115200);
   delay(3000);
@@ -300,15 +202,17 @@ void setup() {
 
   configTime(3600, 3600, "pool.ntp.org");   // init time.h win NTP server, +1 GMT & +1 summer time
 
+  gv_sleep_time = 600000000;    //  Light sleep mode time = 600 sec = 10 min
+  // gv_sleep_time = 15000000;
+
   Serial.println("===============  End  Setup =================");
 }
 
 //=================================================================================================
+
 void loop() {
-  digitalWrite(LED, LOW);
+
   Serial.print("Sleep Count = ");   Serial.println(gv_sleep_count);
-  gv_sleep_time = 600000000;
-  // gv_sleep_time = 15000000;
   esp_sleep_enable_timer_wakeup(gv_sleep_time);
 
   gf_wifi_con();
@@ -321,7 +225,6 @@ void loop() {
   Serial.println("WiFi disconect.");
   WiFi.disconnect();
 
-  digitalWrite(LED, HIGH);
   Serial.println("Go to light sleep mode.");
   delay(500);
   esp_light_sleep_start();
@@ -329,4 +232,5 @@ void loop() {
   Serial.println("\nwakeUp from sleep mode.");
   gv_sleep_count++;
 }
+
 //=================================================================================================
