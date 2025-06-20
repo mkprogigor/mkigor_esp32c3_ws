@@ -2,3 +2,5 @@
 A small project of weathe station on esp32 C3 + BME280 + VEML7700 
 
 <img src="images/mkigor_esp32c3_ws.png" alt="Scheme" style="width:70%; height:auto;"><BR>
+
+[![Watch the video](https://img.youtube.com/vi/HN013gZs_Y4/0.jpg)](https://youtu.be/HN013gZs_Y4) <BR>

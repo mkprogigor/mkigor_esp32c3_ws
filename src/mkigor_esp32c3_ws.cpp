@@ -1,8 +1,8 @@
 /************************************************************************************
-A small project of weathe station on esp32 C3 + BME280 + VEML7700
+A small project of weathe station on esp32 C3 + BME280 + VEML7700 + BMP280
 by Igor Mkprog, mkprogigor@gmail.com
 
-V0.1 from 08.05.2025
+V1.1 from 20.06.2025
 ************************************************************************************/
 #include <Arduino.h>
 #include <WiFi.h>
@@ -11,23 +11,23 @@ V0.1 from 08.05.2025
 #include <ThingSpeak.h>
 #include <Adafruit_VEML7700.h>
 #include <mkigor_aht20.h>
-#include <mkigor_bme280.h>
+#include <mkigor_BMx280.h>
 #include <mkigor_std.h>
 
 WiFiClient        wifi_client;
-bme280            bme;
+BMx280            bme;
+BMx280            bmp1;
 Adafruit_VEML7700 veml;
 aht20             aht1;
 
-static float    gv_bme_p = 0;
-static float    gv_bme_t = 0;
-static float    gv_bme_h = 0;
-static float    gv_lux_a = 0;
-static float    gv_vbat  = 5.8;
-struct_tph      gv_stru_tph;  // var structure for T, P, H
-uint64_t        gv_sleep_time;
-struct tm       gv_tist;      // time stamp structure from time.h
+struct_tph      gv_stru_tph, gv_stru_tph2;  // var structure for T, P, H
 struct_aht      gv_aht_th;
+const static float    gv_vbat_coef = 5.8;
+static float    gv_vbat;
+static float    gv_lux;
+
+struct tm       gv_tist;      // time stamp structure from time.h
+uint64_t        gv_sleep_time;
 RTC_DATA_ATTR uint8_t gv_sleep_count = 0;
 
 //=================================================================================================
@@ -39,27 +39,33 @@ void gf_meas_tphl() {
     if (bme.is_meas()) delay(10);    else break;
   }
   gv_stru_tph = bme.read_TPH();
-  gv_bme_t = gv_stru_tph.temp1;
-  gv_bme_p = gf_Pa2mmHg(gv_stru_tph.pres1);
-  gv_bme_h = gv_stru_tph.humi1;
-  gv_lux_a = veml.readLux(VEML_LUX_AUTO); 
 
-  gv_vbat = (analogRead(A0) * gv_vbat) / 4096;
+  gv_lux = veml.readLux(VEML_LUX_AUTO);
 
+  gv_vbat = (analogRead(A1) * gv_vbat_coef) / 4096;
+  
   aht1.start_meas();      delay(40);
   for (uint8_t i = 0; i < 255; i++) {
-    if (aht1.busy_meas()) delay(1);
-    else break;
+    if (aht1.busy_meas()) delay(1);    else break;
   }
   gv_aht_th = aht1.read_data();
 
-  Serial.print("Temp., *C: ");      Serial.print(gv_bme_t);
-  Serial.print(", Humid., %: ");    Serial.print(gv_bme_h);
-  Serial.print(", Pres., mmHg: ");  Serial.print(gv_bme_p);
-  Serial.print(", Light, lux: ");   Serial.print(gv_lux_a);
-  Serial.print(", Vbat: ");         Serial.print(gv_vbat);
-  Serial.print(", ant20 T: ");      Serial.print(gv_aht_th.temp1);
-  Serial.print(", ant20 H: ");      Serial.println(gv_aht_th.humi1);
+  bmp1.do1meas();
+  delay(200);
+  for (uint8_t i = 0; i < 100; i++) {
+    if (bmp1.is_meas()) delay(10);    else break;
+  }
+  gv_stru_tph2 = bmp1.read_TPH();
+
+  Serial.print("bme T: ");      Serial.print(gv_stru_tph.temp1);
+  Serial.print(", bme P: ");    Serial.print(gf_Pa2mmHg(gv_stru_tph.pres1));
+  Serial.print(", bme H: "); Serial.print(gv_stru_tph.humi1);
+  Serial.print(", lux: ");      Serial.print(gv_lux);
+  Serial.print(", Vbat: ");     Serial.print(gv_vbat);
+  Serial.print(", ant20 T: ");  Serial.print(gv_aht_th.temp1);
+  Serial.print(", ant20 H: ");  Serial.print(gv_aht_th.humi1);
+  Serial.print(", bmp T: ");    Serial.print(gv_stru_tph2.temp1);
+  Serial.print(", bmp H: ");    Serial.println(gf_Pa2mmHg(gv_stru_tph2.pres1));
 }
 
 void gf_send2ts() {
@@ -94,13 +100,14 @@ void gf_send2ts() {
     12 = ESP_SLEEP_WAKEUP_BT                */
     Serial.println(lv_rtc_str);
     ThingSpeak.setStatus(lv_rtc_str);
-    ThingSpeak.setField(1, gv_bme_t); // set the fields with the values
-    ThingSpeak.setField(2, gv_bme_p);
-    ThingSpeak.setField(3, gv_bme_h);
-    ThingSpeak.setField(4, gv_lux_a);
+    ThingSpeak.setField(1, gv_stru_tph.temp1); // set the fields with the values
+    ThingSpeak.setField(2, gf_Pa2mmHg(gv_stru_tph.pres1));
+    ThingSpeak.setField(3, gv_stru_tph.humi1);
+    ThingSpeak.setField(4, gv_lux);
     ThingSpeak.setField(5, gv_vbat);
     ThingSpeak.setField(6, gv_aht_th.temp1);
     ThingSpeak.setField(7, gv_aht_th.humi1);
+    ThingSpeak.setField(8, gv_stru_tph2.pres1);
 
     int t_ret_code = ThingSpeak.writeFields(my_channel_num, write_api_key);
     if (t_ret_code == 200) Serial.println("ThingSpeak ch. update successful.");
@@ -152,19 +159,31 @@ void setup() {
   delay(3000);
   gf_prm_cpu_info();
   Serial.println("=============== Start Setup =================");
-  // pinMode(LED, OUTPUT);
-  pinMode(A0, INPUT);
+
   analogSetAttenuation(ADC_11db);
+  if (adcAttachPin(A1)) Serial.println("ADC attach to pin A1 success.");
+  else Serial.println("ADC NOT attach to pin A1 !");
+
   Wire.begin();
 
+  uint8_t k;
+
   Serial.print("Check a bme280 => "); // check bme280 and SW reset
-  uint8_t k = bme.check();
+  k = bme.check(0x76);
   if (k == 0) Serial.print("not found, check cables.\n");
   else {
     gf_prn_byte(k);
     Serial.print("chip code.\n");
   }
   bme.begin(FOR_MODE, SB_500MS, FIL_x16, OS_x16, OS_x16, OS_x16);
+
+  Serial.print("Check a bmp280 => "); // check bmp280 and SW reset
+  k = bmp1.check(0x77);
+  if (k == 0) Serial.print("not found, check cables.\n");
+  else {
+    gf_prn_byte(k);
+    Serial.print("chip code.\n");
+  }
 
   WiFi.mode(WIFI_STA);
   ThingSpeak.begin(wifi_client);      // Initialize ThingSpeak
@@ -204,9 +223,10 @@ void loop() {
   Serial.println("WiFi disconect.");
   WiFi.disconnect();
 
-  Serial.println("Go to light sleep mode.");
+  Serial.print("Go to light sleep mode for sec = ");  Serial.print(gv_sleep_time/1000000);
   delay(500);
   esp_light_sleep_start();
+  delay(10000);
   delay(500);
   Serial.println("\nwakeUp from sleep mode.");
   gv_sleep_count++;
