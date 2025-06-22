@@ -107,7 +107,7 @@ void gf_send2ts() {
     ThingSpeak.setField(5, gv_vbat);
     ThingSpeak.setField(6, gv_aht_th.temp1);
     ThingSpeak.setField(7, gv_aht_th.humi1);
-    ThingSpeak.setField(8, gv_stru_tph2.pres1);
+    ThingSpeak.setField(8, gf_Pa2mmHg(gv_stru_tph2.pres1));
 
     int t_ret_code = ThingSpeak.writeFields(my_channel_num, write_api_key);
     if (t_ret_code == 200) Serial.println("ThingSpeak ch. update successful.");
