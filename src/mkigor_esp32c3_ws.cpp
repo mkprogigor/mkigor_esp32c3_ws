@@ -15,13 +15,14 @@ V1.1 from 20.06.2025
 #include <mkigor_std.h>
 
 WiFiClient        wifi_client;
-BMx280            bme;
-BMx280            bmp1;
+cl_BME280         bme1;
+cl_BMP280         bmp1;
 Adafruit_VEML7700 veml;
-aht20             aht1;
+cl_AHT20          aht1;
 
-struct_tph      gv_stru_tph, gv_stru_tph2;  // var structure for T, P, H
-struct_aht      gv_aht_th;
+gv_tph_stru     gv_stru_tph;
+gv_tp_stru      gv_stru_tp;
+aht_stru        gv_aht_th;
 const static float    gv_vbat_coef = 5.8;
 static float    gv_vbat;
 static float    gv_lux;
@@ -33,20 +34,20 @@ RTC_DATA_ATTR uint8_t gv_sleep_count = 0;
 //=================================================================================================
 
 void gf_meas_tphl() {
-  bme.do1meas();
+  bme1.do1meas();
   delay(200);
   for (uint8_t i = 0; i < 100; i++) {
-    if (bme.is_meas()) delay(10);    else break;
+    if (bme1.is_meas()) delay(10);    else break;
   }
-  gv_stru_tph = bme.read_TPH();
+  gv_stru_tph = bme1.read_tph();
 
   gv_lux = veml.readLux(VEML_LUX_AUTO);
 
   gv_vbat = (analogRead(A1) * gv_vbat_coef) / 4096;
   
-  aht1.start_meas();      delay(40);
+  aht1.do1meas();      delay(40);
   for (uint8_t i = 0; i < 255; i++) {
-    if (aht1.busy_meas()) delay(1);    else break;
+    if (aht1.is_meas()) delay(1);    else break;
   }
   gv_aht_th = aht1.read_data();
 
@@ -55,7 +56,7 @@ void gf_meas_tphl() {
   for (uint8_t i = 0; i < 100; i++) {
     if (bmp1.is_meas()) delay(10);    else break;
   }
-  gv_stru_tph2 = bmp1.read_TPH();
+  gv_stru_tp = bmp1.read_tp();
 
   Serial.print("bme T: ");      Serial.print(gv_stru_tph.temp1);
   Serial.print(", bme P: ");    Serial.print(gf_Pa2mmHg(gv_stru_tph.pres1));
@@ -64,8 +65,8 @@ void gf_meas_tphl() {
   Serial.print(", Vbat: ");     Serial.print(gv_vbat);
   Serial.print(", ant20 T: ");  Serial.print(gv_aht_th.temp1);
   Serial.print(", ant20 H: ");  Serial.print(gv_aht_th.humi1);
-  Serial.print(", bmp T: ");    Serial.print(gv_stru_tph2.temp1);
-  Serial.print(", bmp H: ");    Serial.println(gf_Pa2mmHg(gv_stru_tph2.pres1));
+  Serial.print(", bmp T: ");    Serial.print(gv_stru_tp.temp1);
+  Serial.print(", bmp H: ");    Serial.println(gf_Pa2mmHg(gv_stru_tp.pres1));
 }
 
 void gf_send2ts() {
@@ -107,7 +108,7 @@ void gf_send2ts() {
     ThingSpeak.setField(5, gv_vbat);
     ThingSpeak.setField(6, gv_aht_th.temp1);
     ThingSpeak.setField(7, gv_aht_th.humi1);
-    ThingSpeak.setField(8, gf_Pa2mmHg(gv_stru_tph2.pres1));
+    ThingSpeak.setField(8, gf_Pa2mmHg(gv_stru_tp.pres1));
 
     int t_ret_code = ThingSpeak.writeFields(my_channel_num, write_api_key);
     if (t_ret_code == 200) Serial.println("ThingSpeak ch. update successful.");
@@ -169,13 +170,13 @@ void setup() {
   uint8_t k;
 
   Serial.print("Check a bme280 => "); // check bme280 and SW reset
-  k = bme.check(0x76);
+  k = bme1.check(0x76);
   if (k == 0) Serial.print("not found, check cables.\n");
   else {
     gf_prn_byte(k);
     Serial.print("chip code.\n");
   }
-  bme.begin(FOR_MODE, SB_500MS, FIL_x16, OS_x16, OS_x16, OS_x16);
+  bme1.begin(cd_FOR_MODE, cd_SB_500MS, cd_FIL_x16, cd_OS_x16, cd_OS_x16, cd_OS_x16);
 
   Serial.print("Check a bmp280 => "); // check bmp280 and SW reset
   k = bmp1.check(0x77);
