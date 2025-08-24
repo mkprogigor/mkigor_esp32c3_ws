@@ -20,12 +20,12 @@ cl_BMP280         bmp1;
 Adafruit_VEML7700 veml;
 cl_AHT20          aht1;
 
-gv_tph_stru     gv_stru_tph;
-gv_tp_stru      gv_stru_tp;
-aht_stru        gv_aht_th;
+tph_stru     gv_stru_tph;
+tp_stru      gv_stru_tp;
+aht_stru     gv_aht_th;
 const static float    gv_vbat_coef = 5.8;
-static float    gv_vbat;
-static float    gv_lux;
+static float gv_vbat;
+static float gv_lux;
 
 struct tm       gv_tist;      // time stamp structure from time.h
 uint64_t        gv_sleep_time;
