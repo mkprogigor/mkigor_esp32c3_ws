@@ -15,9 +15,9 @@ V1.1 from 20.06.2025
 #include <mkigor_std.h>
 
 WiFiClient        wifi_client;
+Adafruit_VEML7700 veml;
 cl_BME280         bme1;
 cl_BMP280         bmp1;
-Adafruit_VEML7700 veml;
 cl_AHT20          aht1;
 
 tph_stru     gv_stru_tph;
@@ -35,42 +35,45 @@ RTC_DATA_ATTR uint8_t gv_sleep_count = 0;
 
 void gf_meas_tphl() {
   bme1.do1Meas();
+  bmp1.do1Meas();
+  aht1.do1Meas();
   delay(200);
+
   for (uint8_t i = 0; i < 100; i++) {
-    if (bme1.isMeas()) delay(10);    else break;
+    if (bme1.isMeas()) delay(10);
+    else break;
   }
-  gv_stru_tph = bme1.read_tph();
+  gv_stru_tph = bme1.readTPH();
+
+  for (uint8_t i = 0; i < 100; i++) {
+    if (bmp1.isMeas()) delay(10);
+    else break;
+  }
+  gv_stru_tp = bmp1.readTP();
+
+  for (uint8_t i = 0; i < 255; i++) {
+    if (aht1.isMeas()) delay(1);
+    else break;
+  }
+  gv_aht_th = aht1.readTH();
 
   gv_lux = veml.readLux(VEML_LUX_AUTO);
 
   gv_vbat = (analogRead(A1) * gv_vbat_coef) / 4096;
   
-  aht1.do1Meas();      delay(40);
-  for (uint8_t i = 0; i < 255; i++) {
-    if (aht1.isMeas()) delay(1);    else break;
-  }
-  gv_aht_th = aht1.read_data();
-
-  bmp1.do1Meas();
-  delay(200);
-  for (uint8_t i = 0; i < 100; i++) {
-    if (bmp1.isMeas()) delay(10);    else break;
-  }
-  gv_stru_tp = bmp1.read_tp();
-
   Serial.print("bme T: ");      Serial.print(gv_stru_tph.temp1);
-  Serial.print(", bme P: ");    Serial.print(gf_Pa2mmHg(gv_stru_tph.pres1));
+  Serial.print(", bme P: ");    Serial.print(mkistdf_Pa2mmHg(gv_stru_tph.pres1));
   Serial.print(", bme H: "); Serial.print(gv_stru_tph.humi1);
   Serial.print(", lux: ");      Serial.print(gv_lux);
   Serial.print(", Vbat: ");     Serial.print(gv_vbat);
   Serial.print(", ant20 T: ");  Serial.print(gv_aht_th.temp1);
   Serial.print(", ant20 H: ");  Serial.print(gv_aht_th.humi1);
   Serial.print(", bmp T: ");    Serial.print(gv_stru_tp.temp1);
-  Serial.print(", bmp H: ");    Serial.println(gf_Pa2mmHg(gv_stru_tp.pres1));
+  Serial.print(", bmp H: ");    Serial.println(mkistdf_Pa2mmHg(gv_stru_tp.pres1));
 }
 
 void gf_send2ts() {
-  if (WiFi.status() != WL_CONNECTED) gf_wifi_con(); // Run only one time to switch ON wifi
+  if (WiFi.status() != WL_CONNECTED) mkistdf_wifiCon(); // Run only one time to switch ON wifi
 
   if (WiFi.status() == WL_CONNECTED) {
     // Forming STATUS string for ThingSpeak.com
@@ -86,9 +89,9 @@ void gf_send2ts() {
       lv_hms = gv_tist.tm_sec;
       lv_rtc_str[4] = (char)(lv_hms /10 +48);   lv_rtc_str[5] = (char)(lv_hms % 10 +48);
     }
-    lv_rtc_str[11] = gf_byte2char(esp_reset_reason());
-    lv_rtc_str[13] = gf_byte2char(esp_sleep_get_wakeup_cause());
-    lv_rtc_str[15] = gf_byte2char(gv_sleep_count >> 4);   lv_rtc_str[16] = gf_byte2char(gv_sleep_count);
+    lv_rtc_str[11] = mkistdf_byte2char(esp_reset_reason());
+    lv_rtc_str[13] = mkistdf_byte2char(esp_sleep_get_wakeup_cause());
+    lv_rtc_str[15] = mkistdf_byte2char(gv_sleep_count >> 4);   lv_rtc_str[16] = mkistdf_byte2char(gv_sleep_count);
     /*  // Function esp_reset_reason() return RESET reason:
     0 = ESP_RST_UNKNOWN       1 = ESP_RST_POWERON       2 = ESP_RST_EXT       3 = ESP_RST_SW
     4 = ESP_RST_PANIC         5 = ESP_RST_INT_WDT       6 = ESP_RST_TASK_WDT  7 = ESP_RST_WDT
@@ -102,13 +105,13 @@ void gf_send2ts() {
     Serial.println(lv_rtc_str);
     ThingSpeak.setStatus(lv_rtc_str);
     ThingSpeak.setField(1, gv_stru_tph.temp1); // set the fields with the values
-    ThingSpeak.setField(2, gf_Pa2mmHg(gv_stru_tph.pres1));
+    ThingSpeak.setField(2, mkistdf_Pa2mmHg(gv_stru_tph.pres1));
     ThingSpeak.setField(3, gv_stru_tph.humi1);
     ThingSpeak.setField(4, gv_lux);
     ThingSpeak.setField(5, gv_vbat);
     ThingSpeak.setField(6, gv_aht_th.temp1);
     ThingSpeak.setField(7, gv_aht_th.humi1);
-    ThingSpeak.setField(8, gf_Pa2mmHg(gv_stru_tp.pres1));
+    ThingSpeak.setField(8, mkistdf_Pa2mmHg(gv_stru_tp.pres1));
 
     int t_ret_code = ThingSpeak.writeFields(my_channel_num, write_api_key);
     if (t_ret_code == 200) Serial.println("ThingSpeak ch. update successful.");
@@ -158,7 +161,7 @@ void setup() {
 
   Serial.begin(115200);
   delay(3000);
-  gf_prm_cpu_info();
+  mkistdf_cpuInfo();
   Serial.println("=============== Start Setup =================");
 
   analogSetAttenuation(ADC_11db);
@@ -173,7 +176,7 @@ void setup() {
   k = bme1.check(0x76);
   if (k == 0) Serial.print("not found, check cables.\n");
   else {
-    gf_prn_byte(k);
+    mkistdf_prnByte(k);
     Serial.print("chip code.\n");
   }
   bme1.begin(cd_FOR_MODE, cd_SB_500MS, cd_FIL_x16, cd_OS_x16, cd_OS_x16, cd_OS_x16);
@@ -182,7 +185,7 @@ void setup() {
   k = bmp1.check(0x77);
   if (k == 0) Serial.print("not found, check cables.\n");
   else {
-    gf_prn_byte(k);
+    mkistdf_prnByte(k);
     Serial.print("chip code.\n");
   }
 
@@ -215,7 +218,7 @@ void loop() {
 
   Serial.print("Sleep Count = ");   Serial.println(gv_sleep_count);
 
-  gf_wifi_con();
+  mkistdf_wifiCon();
   gf_meas_tphl();
 
   delay(500);
