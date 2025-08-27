@@ -103,6 +103,7 @@ void gf_send2ts() {
     9 = ESP_SLEEP_WAKEUP_WIFI     10 = ESP_SLEEP_WAKEUP_COCPU     11 = ESP_SLEEP_WAKEUP_COCPU_TRAP_TRIG
     12 = ESP_SLEEP_WAKEUP_BT                */
     Serial.println(lv_rtc_str);
+
     ThingSpeak.setStatus(lv_rtc_str);
     ThingSpeak.setField(1, gv_stru_tph.temp1); // set the fields with the values
     ThingSpeak.setField(2, mkistdf_Pa2mmHg(gv_stru_tph.pres1));
@@ -188,26 +189,27 @@ void setup() {
     mkistdf_prnByte(k);
     Serial.print("chip code.\n");
   }
+  bmp1.begin(cd_FOR_MODE, cd_SB_500MS, cd_FIL_x16, cd_OS_x16, cd_OS_x16);
 
-  WiFi.mode(WIFI_STA);
-  ThingSpeak.begin(wifi_client);      // Initialize ThingSpeak
- 
   if (!veml.begin()) {
     Serial.println("Sensor VEML7700 not found.");
     veml.setPowerSaveMode(3);
   }
   else Serial.println("Sensor VEML7700 found.");
 
+  aht1.begin();
+  delay(20);
+  if (aht1.isCalibr()) Serial.println("ANT20 calibrated.");
+  else Serial.println("ANT20 not calibrated.");
+
+  WiFi.mode(WIFI_STA);
+  ThingSpeak.begin(wifi_client);      // Initialize ThingSpeak
+ 
   configTime(3600, 3600, "pool.ntp.org");   // init time.h win NTP server, +1 GMT & +1 summer time
 
   gv_sleep_time = 600000000;    //  Light sleep mode time = 600 sec = 10 min
   // gv_sleep_time = 15000000;
   esp_sleep_enable_timer_wakeup(gv_sleep_time);
-
-  aht1.begin();
-  delay(20);
-  if (aht1.isCalibr()) Serial.println("ANT20 calibrated.");
-  else Serial.println("ANT20 not calibrated.");
 
   Serial.println("===============  End  Setup =================");
 }
@@ -230,7 +232,6 @@ void loop() {
   Serial.print("Go to light sleep mode for sec = ");  Serial.print(gv_sleep_time/1000000);
   delay(500);
   esp_light_sleep_start();
-  delay(10000);
   delay(500);
   Serial.println("\nwakeUp from sleep mode.");
   gv_sleep_count++;
