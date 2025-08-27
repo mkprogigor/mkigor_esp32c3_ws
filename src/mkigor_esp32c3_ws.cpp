@@ -34,10 +34,10 @@ RTC_DATA_ATTR uint8_t gv_sleep_count = 0;
 //=================================================================================================
 
 void gf_meas_tphl() {
-  bme1.do1meas();
+  bme1.do1Meas();
   delay(200);
   for (uint8_t i = 0; i < 100; i++) {
-    if (bme1.is_meas()) delay(10);    else break;
+    if (bme1.isMeas()) delay(10);    else break;
   }
   gv_stru_tph = bme1.read_tph();
 
@@ -45,16 +45,16 @@ void gf_meas_tphl() {
 
   gv_vbat = (analogRead(A1) * gv_vbat_coef) / 4096;
   
-  aht1.do1meas();      delay(40);
+  aht1.do1Meas();      delay(40);
   for (uint8_t i = 0; i < 255; i++) {
-    if (aht1.is_meas()) delay(1);    else break;
+    if (aht1.isMeas()) delay(1);    else break;
   }
   gv_aht_th = aht1.read_data();
 
-  bmp1.do1meas();
+  bmp1.do1Meas();
   delay(200);
   for (uint8_t i = 0; i < 100; i++) {
-    if (bmp1.is_meas()) delay(10);    else break;
+    if (bmp1.isMeas()) delay(10);    else break;
   }
   gv_stru_tp = bmp1.read_tp();
 
@@ -203,7 +203,7 @@ void setup() {
 
   aht1.begin();
   delay(20);
-  if (aht1.is_calibr()) Serial.println("ANT20 calibrated.");
+  if (aht1.isCalibr()) Serial.println("ANT20 calibrated.");
   else Serial.println("ANT20 not calibrated.");
 
   Serial.println("===============  End  Setup =================");
