@@ -2,7 +2,7 @@
 A small project of weathe station on esp32 C3 + BME280 + VEML7700 + BMP280
 by Igor Mkprog, mkprogigor@gmail.com
 
-V1.1 from 20.06.2025
+V1.2 from 30.08.2025
 ************************************************************************************/
 #include <Arduino.h>
 #include <WiFi.h>
