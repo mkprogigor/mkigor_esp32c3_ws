@@ -10,19 +10,21 @@ V1.2 from 30.08.2025
 #include <time.h>
 #include <ThingSpeak.h>
 #include <Adafruit_VEML7700.h>
-#include <mkigor_aht20.h>
+// #include <mkigor_aht20.h>
 #include <mkigor_BMx280.h>
 #include <mkigor_std.h>
 
 WiFiClient        wifi_client;
 Adafruit_VEML7700 veml;
 cl_BME280         bme1;
-cl_BMP280         bmp1;
-cl_AHT20          aht1;
+cl_BME680         bme6;
+// cl_BMP280         bmp1;
+// cl_AHT20          aht1;
 
+// tp_stru      gv_stru_tp;
 tph_stru     gv_stru_tph;
-tp_stru      gv_stru_tp;
-aht_stru     gv_aht_th;
+tphg_stru    gv_stru_tphg;
+// aht_stru     gv_aht_th;
 const static float    gv_vbat_coef = 5.8;
 static float gv_vbat;
 static float gv_lux;
@@ -35,8 +37,7 @@ RTC_DATA_ATTR uint8_t gv_sleep_count = 0;
 
 void gf_meas_tphl() {
   bme1.do1Meas();
-  bmp1.do1Meas();
-  aht1.do1Meas();
+  bme6.do1Meas();
   delay(200);
 
   for (uint8_t i = 0; i < 100; i++) {
@@ -46,30 +47,23 @@ void gf_meas_tphl() {
   gv_stru_tph = bme1.readTPH();
 
   for (uint8_t i = 0; i < 100; i++) {
-    if (bmp1.isMeas()) delay(10);
+    if (bme6.isMeas()) delay(10);
     else break;
   }
-  gv_stru_tp = bmp1.readTP();
-
-  for (uint8_t i = 0; i < 255; i++) {
-    if (aht1.isMeas()) delay(1);
-    else break;
-  }
-  gv_aht_th = aht1.readTH();
+  gv_stru_tphg = bme6.readTPHG();
 
   gv_lux = veml.readLux(VEML_LUX_AUTO);
 
   gv_vbat = (analogRead(A1) * gv_vbat_coef) / 4096;
   
   Serial.print("bme T: ");      Serial.print(gv_stru_tph.temp1);
-  Serial.print(", bme P: ");    Serial.print(mkistdf_Pa2mmHg(gv_stru_tph.pres1));
-  Serial.print(", bme H: "); Serial.print(gv_stru_tph.humi1);
+  Serial.print(", bme P: ");    Serial.print(gv_stru_tph.pres1);
+  Serial.print(", bme H: ");    Serial.print(gv_stru_tph.humi1);
+  Serial.print(", bme6 T: ");   Serial.print(gv_stru_tphg.temp1);
+  Serial.print(", bme6 P: ");   Serial.print(gv_stru_tphg.pres1);
+  Serial.print(", bme6 H: ");   Serial.print(gv_stru_tphg.humi1);
   Serial.print(", lux: ");      Serial.print(gv_lux);
-  Serial.print(", Vbat: ");     Serial.print(gv_vbat);
-  Serial.print(", ant20 T: ");  Serial.print(gv_aht_th.temp1);
-  Serial.print(", ant20 H: ");  Serial.print(gv_aht_th.humi1);
-  Serial.print(", bmp T: ");    Serial.print(gv_stru_tp.temp1);
-  Serial.print(", bmp H: ");    Serial.println(mkistdf_Pa2mmHg(gv_stru_tp.pres1));
+  Serial.print(", Vbat: ");     Serial.println(gv_vbat);
 }
 
 void gf_send2ts() {
@@ -106,13 +100,13 @@ void gf_send2ts() {
 
     ThingSpeak.setStatus(lv_rtc_str);
     ThingSpeak.setField(1, gv_stru_tph.temp1); // set the fields with the values
-    ThingSpeak.setField(2, mkistdf_Pa2mmHg(gv_stru_tph.pres1));
+    ThingSpeak.setField(2, gv_stru_tph.pres1);
     ThingSpeak.setField(3, gv_stru_tph.humi1);
-    ThingSpeak.setField(4, gv_lux);
-    ThingSpeak.setField(5, gv_vbat);
-    ThingSpeak.setField(6, gv_aht_th.temp1);
-    ThingSpeak.setField(7, gv_aht_th.humi1);
-    ThingSpeak.setField(8, mkistdf_Pa2mmHg(gv_stru_tp.pres1));
+    ThingSpeak.setField(4, gv_stru_tphg.temp1);
+    ThingSpeak.setField(5, gv_stru_tphg.pres1);
+    ThingSpeak.setField(6, gv_stru_tphg.humi1);
+    ThingSpeak.setField(7, gv_lux);
+    ThingSpeak.setField(8, gv_vbat);
 
     int t_ret_code = ThingSpeak.writeFields(my_channel_num, write_api_key);
     if (t_ret_code == 200) Serial.println("ThingSpeak ch. update successful.");
@@ -162,8 +156,8 @@ void setup() {
 
   Serial.begin(115200);
   delay(3000);
-  mkistdf_cpuInfo();
   Serial.println("=============== Start Setup =================");
+  mkistdf_cpuInfo();
 
   analogSetAttenuation(ADC_11db);
   if (adcAttachPin(A1)) Serial.println("ADC attach to pin A1 success.");
@@ -182,14 +176,14 @@ void setup() {
   }
   bme1.begin(cd_FOR_MODE, cd_SB_500MS, cd_FIL_x16, cd_OS_x16, cd_OS_x16, cd_OS_x16);
 
-  Serial.print("Check a bmp280 => "); // check bmp280 and SW reset
-  k = bmp1.check(0x77);
+  Serial.print("Check a bme680 => "); // check bmp280 and SW reset
+  k = bme6.check(0x77);
   if (k == 0) Serial.print("not found, check cables.\n");
   else {
     mkistdf_prnByte(k);
     Serial.print("chip code.\n");
   }
-  bmp1.begin(cd_FOR_MODE, cd_SB_500MS, cd_FIL_x16, cd_OS_x16, cd_OS_x16);
+  bme6.begin(cd_FOR_MODE, cd_SB_500MS, cd_FIL_x16, cd_OS_x16, cd_OS_x16, cd_OS_x16);
 
   if (!veml.begin()) {
     Serial.println("Sensor VEML7700 not found.");
@@ -197,18 +191,18 @@ void setup() {
   }
   else Serial.println("Sensor VEML7700 found.");
 
-  aht1.begin();
-  delay(20);
-  if (aht1.isCalibr()) Serial.println("ANT20 calibrated.");
-  else Serial.println("ANT20 not calibrated.");
+  // aht1.begin();
+  // delay(20);
+  // if (aht1.isCalibr()) Serial.println("ANT20 calibrated.");
+  // else Serial.println("ANT20 not calibrated.");
 
   WiFi.mode(WIFI_STA);
   ThingSpeak.begin(wifi_client);      // Initialize ThingSpeak
  
   configTime(3600, 3600, "pool.ntp.org");   // init time.h win NTP server, +1 GMT & +1 summer time
 
-  gv_sleep_time = 600000000;    //  Light sleep mode time = 600 sec = 10 min
-  // gv_sleep_time = 15000000;
+  // gv_sleep_time = 600000000;    //  Light sleep mode time = 600 sec = 10 min
+  gv_sleep_time = 20000000;
   esp_sleep_enable_timer_wakeup(gv_sleep_time);
 
   Serial.println("===============  End  Setup =================");
