@@ -10,18 +10,19 @@ V1.2 from 30.08.2025
 #include <time.h>
 #include <ThingSpeak.h>
 #include <Adafruit_VEML7700.h>
-// #include <mkigor_aht20.h>
 #include <mkigor_BMx280.h>
 #include <mkigor_std.h>
+
+#include "Adafruit_BME680.h"
+
+#define enDEBUG
 
 WiFiClient        wifi_client;
 Adafruit_VEML7700 veml;
 cl_BME280         bme1;
 cl_BME680         bme6;
-// cl_BMP280         bmp1;
-// cl_AHT20          aht1;
 
-// tp_stru      gv_stru_tp;
+Adafruit_BME680 bmeA; // I2C
 tph_stru     gv_stru_tph;
 tphg_stru    gv_stru_tphg;
 // aht_stru     gv_aht_th;
@@ -34,36 +35,86 @@ uint64_t        gv_sleep_time;
 RTC_DATA_ATTR uint8_t gv_sleep_count = 0;
 
 //=================================================================================================
+void lv_dispRegs(void) {
+  // 	Status reg 0x1D =
+  //		7		|		6		|		5		|	4	|	3	|	2	|	1	|	0	|
+  //	new_data_0	| gas_measuring	| 	measuring	| 	x	|	gas_meas_index_0<3:0>		|
+  //	Gas_r_lsb reg 0x2B =
+  //	7	|	6	|		5		|		4		|	3	|	2	|	1	|	0	|
+  //	gas_r<1:0>	| gas_valid_r	| head_stab_r	| 			gas_range_r			|
+  //	Ctrl_gas_1 reg 0x71 =
+  //	7	|	6	|	5	|	4	|	3	|	2	|	1	|	0	|
+  //		|		|		|run_gas|  			nb_conv<3:0>		|
+  Serial.print("Status= ");      mkistdf_prnByte(bme6.readReg(0x1D));
+  Serial.print("Gas_r_lsb= ");   mkistdf_prnByte(bme6.readReg(0x2B));
+  Serial.print("Ctrl_gas_0= ");  mkistdf_prnByte(bme6.readReg(0x70));
+  Serial.print("Ctrl_gas_1= ");  mkistdf_prnByte(bme6.readReg(0x71));
+  // Serial.print("Ctrl_meas= ");   mkistdf_prnByte(bme6.readReg(0x74));
+  Serial.println();
+}
 
-void gf_meas_tphl() {
+void gf_readData() {
+  Serial.println("1. BME280 to begin measurement.");
   bme1.do1Meas();
-  bme6.do1Meas();
-  delay(200);
-
-  for (uint8_t i = 0; i < 100; i++) {
-    if (bme1.isMeas()) delay(10);
+  unsigned long lv_measStart = millis();
+  for (uint8_t i = 0; i < 3000; i++) {
+    if (bme1.isMeas()) delay(1);
     else break;
   }
+#ifdef enDEBUG
+  printf("Time measuring BME680 TPHG = %d\n", millis()-lv_measStart );
+#endif
   gv_stru_tph = bme1.readTPH();
+#ifdef enDEBUG
+  printf("BME280 T:%f, P:%f, H:%f\n", gv_stru_tph.temp1, gv_stru_tph.pres1, gv_stru_tph.humi1);
+#endif
 
-  for (uint8_t i = 0; i < 100; i++) {
-    if (bme6.isMeas()) delay(10);
+  Serial.println("2. BME680 to begin measurement.");
+  bme6.initGasPointX(0, 250, 100, (int16_t)gv_stru_tph.temp1);
+  bme6.do1Meas();
+  lv_measStart = millis();
+  for (uint8_t i = 0; i < 3000; i++) {
+    if (bme6.isMeas()) {
+      // lv_dispRegs();
+      delay(1);
+    } 
     else break;
   }
+#ifdef enDEBUG
+  printf("Time measuring BME680 TPHG = %d\n", millis()-lv_measStart );
+  lv_dispRegs();
+#endif
   gv_stru_tphg = bme6.readTPHG();
+#ifdef enDEBUG
+  printf("BME680 T:%f, P:%f, H:%f, G:%f\n", gv_stru_tphg.temp1, gv_stru_tphg.pres1, gv_stru_tphg.humi1, gv_stru_tphg.gasr1);
+#endif
+
+
+
+//tttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttt
+  Serial.println("3. Adaf BME680 to begin measurement.");
+  unsigned long endTime = bmeA.beginReading();
+  lv_measStart = millis();
+  if (endTime == 0) {
+    Serial.println(F("Failed to begin reading :("));
+    return;
+  }
+  if (!bmeA.endReading()) {
+    Serial.println(F("Failed to complete reading :("));
+    return;
+  }
+  printf("Time measuring Adaf BME680 TPHG = %d\n", millis()-lv_measStart );
+  printf("BME680 T:%f, P:%d, H:%f, G:%d\n", bmeA.temperature, bmeA.pressure, bmeA.humidity, bmeA.gas_resistance);
+//tttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttt
+
+
 
   gv_lux = veml.readLux(VEML_LUX_AUTO);
-
   gv_vbat = (analogRead(A1) * gv_vbat_coef) / 4096;
-  
-  Serial.print("bme T: ");      Serial.print(gv_stru_tph.temp1);
-  Serial.print(", bme P: ");    Serial.print(gv_stru_tph.pres1);
-  Serial.print(", bme H: ");    Serial.print(gv_stru_tph.humi1);
-  Serial.print(", bme6 T: ");   Serial.print(gv_stru_tphg.temp1);
-  Serial.print(", bme6 P: ");   Serial.print(gv_stru_tphg.pres1);
-  Serial.print(", bme6 H: ");   Serial.print(gv_stru_tphg.humi1);
-  Serial.print(", lux: ");      Serial.print(gv_lux);
-  Serial.print(", Vbat: ");     Serial.println(gv_vbat);
+#ifdef enDEBUG
+  printf("\nLux:%d, Vbat: %f\n\n", gv_lux, gv_vbat);
+#endif
+
 }
 
 void gf_send2ts() {
@@ -77,11 +128,11 @@ void gf_send2ts() {
     else {
       Serial.print(&gv_tist);   Serial.print(" => time update success.\n");
       lv_hms = gv_tist.tm_hour;
-      lv_rtc_str[0] = (char)(lv_hms /10 +48);   lv_rtc_str[1] = (char)(lv_hms % 10 +48);
+      lv_rtc_str[0] = (char)(lv_hms / 10 + 48);   lv_rtc_str[1] = (char)(lv_hms % 10 + 48);
       lv_hms = gv_tist.tm_min;
-      lv_rtc_str[2] = (char)(lv_hms /10 +48);   lv_rtc_str[3] = (char)(lv_hms % 10 +48);
+      lv_rtc_str[2] = (char)(lv_hms / 10 + 48);   lv_rtc_str[3] = (char)(lv_hms % 10 + 48);
       lv_hms = gv_tist.tm_sec;
-      lv_rtc_str[4] = (char)(lv_hms /10 +48);   lv_rtc_str[5] = (char)(lv_hms % 10 +48);
+      lv_rtc_str[4] = (char)(lv_hms / 10 + 48);   lv_rtc_str[5] = (char)(lv_hms % 10 + 48);
     }
     lv_rtc_str[11] = mkistdf_byte2char(esp_reset_reason());
     lv_rtc_str[13] = mkistdf_byte2char(esp_sleep_get_wakeup_cause());
@@ -106,7 +157,7 @@ void gf_send2ts() {
     ThingSpeak.setField(5, gv_stru_tphg.pres1);
     ThingSpeak.setField(6, gv_stru_tphg.humi1);
     ThingSpeak.setField(7, gv_lux);
-    ThingSpeak.setField(8, gv_vbat);
+    ThingSpeak.setField(8, gv_stru_tphg.gasr1);
 
     int t_ret_code = ThingSpeak.writeFields(my_channel_num, write_api_key);
     if (t_ret_code == 200) Serial.println("ThingSpeak ch. update successful.");
@@ -122,19 +173,19 @@ void gf_veml_disp() {
   Serial.println("Settings used for reading:");
   Serial.print(F("Gain: "));
   switch (veml.getGain()) {
-    case VEML7700_GAIN_1: Serial.println("1"); break;
-    case VEML7700_GAIN_2: Serial.println("2"); break;
-    case VEML7700_GAIN_1_4: Serial.println("1/4"); break;
-    case VEML7700_GAIN_1_8: Serial.println("1/8"); break;
+  case VEML7700_GAIN_1: Serial.println("1"); break;
+  case VEML7700_GAIN_2: Serial.println("2"); break;
+  case VEML7700_GAIN_1_4: Serial.println("1/4"); break;
+  case VEML7700_GAIN_1_8: Serial.println("1/8"); break;
   }
   Serial.print(F("Integration Time (ms): "));
   switch (veml.getIntegrationTime()) {
-    case VEML7700_IT_25MS: Serial.println("25"); break;
-    case VEML7700_IT_50MS: Serial.println("50"); break;
-    case VEML7700_IT_100MS: Serial.println("100"); break;
-    case VEML7700_IT_200MS: Serial.println("200"); break;
-    case VEML7700_IT_400MS: Serial.println("400"); break;
-    case VEML7700_IT_800MS: Serial.println("800"); break;
+  case VEML7700_IT_25MS: Serial.println("25"); break;
+  case VEML7700_IT_50MS: Serial.println("50"); break;
+  case VEML7700_IT_100MS: Serial.println("100"); break;
+  case VEML7700_IT_200MS: Serial.println("200"); break;
+  case VEML7700_IT_400MS: Serial.println("400"); break;
+  case VEML7700_IT_800MS: Serial.println("800"); break;
   }
 
   Serial.print("Gain = "); Serial.println(veml.getGain());
@@ -165,6 +216,12 @@ void setup() {
 
   Wire.begin();
 
+  if (!veml.begin()) {
+    Serial.println("Sensor VEML7700 not found.");
+    veml.setPowerSaveMode(3);
+  }
+  else Serial.println("Sensor VEML7700 found.");
+
   uint8_t k;
 
   Serial.print("Check a bme280 => "); // check bme280 and SW reset
@@ -183,22 +240,35 @@ void setup() {
     mkistdf_prnByte(k);
     Serial.print("chip code.\n");
   }
-  bme6.begin(cd_FOR_MODE, cd_SB_500MS, cd_FIL_x16, cd_OS_x16, cd_OS_x16, cd_OS_x16);
-
-  if (!veml.begin()) {
-    Serial.println("Sensor VEML7700 not found.");
-    veml.setPowerSaveMode(3);
+  bme6.begin(cd_FIL_OFF, cd_OS_x16, cd_OS_x16, cd_OS_x16);
+  // Init ALL 10 heat set point
+  // Res_heat_X	5Ah-63h,    Gas_wait_X	64h-6Dh.    Idac_heat_X	50h-59h will calc by BME680 itself
+  for (uint8_t i = 0; i < 10; i++) bme6.initGasPointX(i, 250+i*10, 100+i*10, (int16_t)gv_stru_tph.temp1);
+  bme6.initGasPointX(0, 250, 100, (int16_t)gv_stru_tph.temp1);
+#ifdef enDEBUG
+  printf("10 set Points = idac_heat_, res_heat_, gas_wait_ :\n");
+  for (uint8_t i = 0; i < 10; i++) {
+    printf("Heat Point %d = %d %d %d\n", i, bme6.readReg(0x50+i), bme6.readReg(0x5A+i), bme6.readReg(0x64+i));
   }
-  else Serial.println("Sensor VEML7700 found.");
+#endif
 
-  // aht1.begin();
-  // delay(20);
-  // if (aht1.isCalibr()) Serial.println("ANT20 calibrated.");
-  // else Serial.println("ANT20 not calibrated.");
+//tttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttt
+  if (!bmeA.begin()) {
+    Serial.println(F("Could not find a valid BME680 sensor, check wiring!"));
+    while (1);
+  }
+  // Set up oversampling and filter initialization
+  bmeA.setTemperatureOversampling(BME680_OS_16X);
+  bmeA.setHumidityOversampling(BME680_OS_16X);
+  bmeA.setPressureOversampling(BME680_OS_16X);
+  bmeA.setIIRFilterSize(BME680_FILTER_SIZE_0);
+  bmeA.setGasHeater(250, 100); // 320*C for 150 ms
+//tttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttt
+
 
   WiFi.mode(WIFI_STA);
   ThingSpeak.begin(wifi_client);      // Initialize ThingSpeak
- 
+
   configTime(3600, 3600, "pool.ntp.org");   // init time.h win NTP server, +1 GMT & +1 summer time
 
   // gv_sleep_time = 600000000;    //  Light sleep mode time = 600 sec = 10 min
@@ -211,24 +281,25 @@ void setup() {
 //=================================================================================================
 
 void loop() {
-
-  Serial.print("Sleep Count = ");   Serial.println(gv_sleep_count);
-
-  mkistdf_wifiCon();
-  gf_meas_tphl();
+  // mkistdf_wifiCon();
+  gf_readData();
 
   delay(500);
-  gf_send2ts();
+  // gf_send2ts();
 
-  Serial.println("WiFi disconect.");
-  WiFi.disconnect();
+  // Serial.println("WiFi disconect.");
+  // WiFi.disconnect();
 
-  Serial.print("Go to light sleep mode for sec = ");  Serial.print(gv_sleep_time/1000000);
-  delay(500);
-  esp_light_sleep_start();
-  delay(500);
-  Serial.println("\nwakeUp from sleep mode.");
-  gv_sleep_count++;
+  // Serial.print("Go to light sleep mode for sec = ");  Serial.print(gv_sleep_time/1000000);
+  // delay(500);
+  // esp_light_sleep_start();
+  // delay(500);
+  // Serial.print("\n...WakeUp from sleep mode, Ncount = ");
+  // Serial.println(gv_sleep_count);
+  // Serial.println();
+
+  // gv_sleep_count++;
+  delay(20000);
 }
 
 //=================================================================================================
