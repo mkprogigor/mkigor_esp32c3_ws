@@ -13,19 +13,15 @@ V1.2 from 30.08.2025
 #include <mkigor_BMx280.h>
 #include <mkigor_std.h>
 
-#include "Adafruit_BME680.h"
-
-#define enDEBUG
+//#define enDEBUG   // uncoment for debug info
 
 WiFiClient        wifi_client;
 Adafruit_VEML7700 veml;
-cl_BME280         bme1;
+cl_BME280         bme2;
 cl_BME680         bme6;
 
-Adafruit_BME680 bmeA; // I2C
 tph_stru     gv_stru_tph;
 tphg_stru    gv_stru_tphg;
-// aht_stru     gv_aht_th;
 const static float    gv_vbat_coef = 5.8;
 static float gv_vbat;
 static float gv_lux;
@@ -54,67 +50,30 @@ void lv_dispRegs(void) {
 }
 
 void gf_readData() {
-  Serial.println("1. BME280 to begin measurement.");
-  bme1.do1Meas();
+  bme2.do1Meas();
   unsigned long lv_measStart = millis();
   for (uint8_t i = 0; i < 3000; i++) {
-    if (bme1.isMeas()) delay(1);
+    if (bme2.isMeas()) delay(1);
     else break;
   }
-#ifdef enDEBUG
-  printf("Time measuring BME680 TPHG = %d\n", millis()-lv_measStart );
-#endif
-  gv_stru_tph = bme1.readTPH();
-#ifdef enDEBUG
-  printf("BME280 T:%f, P:%f, H:%f\n", gv_stru_tph.temp1, gv_stru_tph.pres1, gv_stru_tph.humi1);
-#endif
+  printf("BME280 measuring TPHG time = %d\n", millis()-lv_measStart );
+  gv_stru_tph = bme2.readTPH();
+  printf("BME280 T:%f, P:%f, H:%f\n\n", gv_stru_tph.temp1, gv_stru_tph.pres1, gv_stru_tph.humi1);
 
-  Serial.println("2. BME680 to begin measurement.");
-  bme6.initGasPointX(0, 250, 100, (int16_t)gv_stru_tph.temp1);
+  bme6.initGasPointX(0, 300, 100, (int16_t)gv_stru_tph.temp1);
   bme6.do1Meas();
   lv_measStart = millis();
   for (uint8_t i = 0; i < 3000; i++) {
-    if (bme6.isMeas()) {
-      // lv_dispRegs();
-      delay(1);
-    } 
+    if (bme6.isMeas()) delay(1);
     else break;
   }
-#ifdef enDEBUG
-  printf("Time measuring BME680 TPHG = %d\n", millis()-lv_measStart );
-  lv_dispRegs();
-#endif
+  printf("BME680 measuring TPHG time = %d\n", millis()-lv_measStart );
   gv_stru_tphg = bme6.readTPHG();
-#ifdef enDEBUG
-  printf("BME680 T:%f, P:%f, H:%f, G:%f\n", gv_stru_tphg.temp1, gv_stru_tphg.pres1, gv_stru_tphg.humi1, gv_stru_tphg.gasr1);
-#endif
-
-
-
-//tttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttt
-  Serial.println("3. Adaf BME680 to begin measurement.");
-  unsigned long endTime = bmeA.beginReading();
-  lv_measStart = millis();
-  if (endTime == 0) {
-    Serial.println(F("Failed to begin reading :("));
-    return;
-  }
-  if (!bmeA.endReading()) {
-    Serial.println(F("Failed to complete reading :("));
-    return;
-  }
-  printf("Time measuring Adaf BME680 TPHG = %d\n", millis()-lv_measStart );
-  printf("BME680 T:%f, P:%d, H:%f, G:%d\n", bmeA.temperature, bmeA.pressure, bmeA.humidity, bmeA.gas_resistance);
-//tttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttt
-
-
+  printf("BME680 T:%f, P:%f, H:%f, G:%f\n\n", gv_stru_tphg.temp1, gv_stru_tphg.pres1, gv_stru_tphg.humi1, gv_stru_tphg.gasr1);
 
   gv_lux = veml.readLux(VEML_LUX_AUTO);
   gv_vbat = (analogRead(A1) * gv_vbat_coef) / 4096;
-#ifdef enDEBUG
-  printf("\nLux:%d, Vbat: %f\n\n", gv_lux, gv_vbat);
-#endif
-
+  printf("Lux:%f, Vbat: %f\n\n", gv_lux, gv_vbat);
 }
 
 void gf_send2ts() {
@@ -207,8 +166,10 @@ void setup() {
 
   Serial.begin(115200);
   delay(3000);
-  Serial.println("=============== Start Setup =================");
+  Serial.println("======================= Start Setup ========================");
+ #ifdef enDEBUG
   mkistdf_cpuInfo();
+#endif
 
   analogSetAttenuation(ADC_11db);
   if (adcAttachPin(A1)) Serial.println("ADC attach to pin A1 success.");
@@ -225,20 +186,20 @@ void setup() {
   uint8_t k;
 
   Serial.print("Check a bme280 => "); // check bme280 and SW reset
-  k = bme1.check(0x76);
+  k = bme2.check(0x76);
   if (k == 0) Serial.print("not found, check cables.\n");
   else {
     mkistdf_prnByte(k);
-    Serial.print("chip code.\n");
+    Serial.print(" found chip code.\n");
   }
-  bme1.begin(cd_FOR_MODE, cd_SB_500MS, cd_FIL_x16, cd_OS_x16, cd_OS_x16, cd_OS_x16);
+  bme2.begin(cd_FOR_MODE, cd_SB_500MS, cd_FIL_OFF, cd_OS_x16, cd_OS_x16, cd_OS_x16);
 
   Serial.print("Check a bme680 => "); // check bmp280 and SW reset
   k = bme6.check(0x77);
   if (k == 0) Serial.print("not found, check cables.\n");
   else {
     mkistdf_prnByte(k);
-    Serial.print("chip code.\n");
+    Serial.print(" found chip code.\n");
   }
   bme6.begin(cd_FIL_OFF, cd_OS_x16, cd_OS_x16, cd_OS_x16);
   // Init ALL 10 heat set point
@@ -247,59 +208,42 @@ void setup() {
   bme6.initGasPointX(0, 250, 100, (int16_t)gv_stru_tph.temp1);
 #ifdef enDEBUG
   printf("10 set Points = idac_heat_, res_heat_, gas_wait_ :\n");
-  for (uint8_t i = 0; i < 10; i++) {
-    printf("Heat Point %d = %d %d %d\n", i, bme6.readReg(0x50+i), bme6.readReg(0x5A+i), bme6.readReg(0x64+i));
-  }
+  for (uint8_t i = 0; i < 10; i++) printf("Heat Point %d = %d %d %d\n", i, bme6.readReg(0x50+i), bme6.readReg(0x5A+i), bme6.readReg(0x64+i));
 #endif
-
-//tttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttt
-  if (!bmeA.begin()) {
-    Serial.println(F("Could not find a valid BME680 sensor, check wiring!"));
-    while (1);
-  }
-  // Set up oversampling and filter initialization
-  bmeA.setTemperatureOversampling(BME680_OS_16X);
-  bmeA.setHumidityOversampling(BME680_OS_16X);
-  bmeA.setPressureOversampling(BME680_OS_16X);
-  bmeA.setIIRFilterSize(BME680_FILTER_SIZE_0);
-  bmeA.setGasHeater(250, 100); // 320*C for 150 ms
-//tttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttt
-
 
   WiFi.mode(WIFI_STA);
   ThingSpeak.begin(wifi_client);      // Initialize ThingSpeak
 
   configTime(3600, 3600, "pool.ntp.org");   // init time.h win NTP server, +1 GMT & +1 summer time
 
-  // gv_sleep_time = 600000000;    //  Light sleep mode time = 600 sec = 10 min
-  gv_sleep_time = 20000000;
+  gv_sleep_time = 600000000;    //  Light sleep mode time = 600 sec = 10 min
+  // gv_sleep_time = 20000000;
   esp_sleep_enable_timer_wakeup(gv_sleep_time);
-
-  Serial.println("===============  End  Setup =================");
+  Serial.println("========================= End Setup =======================\n");
 }
 
 //=================================================================================================
 
 void loop() {
-  // mkistdf_wifiCon();
+  mkistdf_wifiCon();
   gf_readData();
 
   delay(500);
-  // gf_send2ts();
+  gf_send2ts();
 
-  // Serial.println("WiFi disconect.");
-  // WiFi.disconnect();
+  Serial.println("WiFi disconect.");
+  WiFi.disconnect();
 
-  // Serial.print("Go to light sleep mode for sec = ");  Serial.print(gv_sleep_time/1000000);
-  // delay(500);
-  // esp_light_sleep_start();
-  // delay(500);
-  // Serial.print("\n...WakeUp from sleep mode, Ncount = ");
-  // Serial.println(gv_sleep_count);
-  // Serial.println();
+  Serial.print("Go to light sleep mode for sec = ");  Serial.print(gv_sleep_time/1000000);
+  delay(500);
+  esp_light_sleep_start();
+  delay(500);
+  Serial.print("\n...WakeUp from sleep mode, Ncount = ");
+  Serial.println(gv_sleep_count);
+  Serial.println();
 
-  // gv_sleep_count++;
-  delay(20000);
+  gv_sleep_count++;
+  // delay(30000);
 }
 
 //=================================================================================================
