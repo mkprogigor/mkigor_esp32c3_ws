@@ -10,7 +10,6 @@ V1.2 from 30.08.2025
 #include <time.h>
 #include <ThingSpeak.h>
 #include <Adafruit_VEML7700.h>
-// #include <mkigor_aht20.h>
 #include <mkigor_BMx280.h>
 #include <mkigor_std.h>
 
@@ -18,13 +17,10 @@ WiFiClient        wifi_client;
 Adafruit_VEML7700 veml;
 cl_BME280         bme1;
 cl_BME680         bme6;
-// cl_BMP280         bmp1;
-// cl_AHT20          aht1;
 
-// tp_stru      gv_stru_tp;
 tph_stru     gv_stru_tph;
 tphg_stru    gv_stru_tphg;
-// aht_stru     gv_aht_th;
+
 const static float    gv_vbat_coef = 5.8;
 static float gv_vbat;
 static float gv_lux;
