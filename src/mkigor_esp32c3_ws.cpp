@@ -199,7 +199,7 @@ void setup() {
     mkistdf_prnByte(k);
     Serial.print(" found chip code.\n");
   }
-  bme2.begin(cd_FOR_MODE, cd_SB_500MS, cd_FIL_x16, cd_OS_x16, cd_OS_x16, cd_OS_x16);
+  bme2.begin(cd_FOR_MODE, cd_SB_500MS, cd_FIL_x2, cd_OS_x16, cd_OS_x16, cd_OS_x16);
 
   Serial.print("Check a bme680 => "); // check bmp280 and SW reset
   k = bme6.check(0x77);
@@ -208,7 +208,7 @@ void setup() {
     mkistdf_prnByte(k);
     Serial.print(" found chip code.\n");
   }
-  bme6.begin(cd_FIL_x16, cd_OS_x16, cd_OS_x16, cd_OS_x16);
+  bme6.begin(cd_FIL_x2, cd_OS_x16, cd_OS_x16, cd_OS_x16);
   // Init ALL 10 heat set point
   // Res_heat_X	5Ah-63h,    Gas_wait_X	64h-6Dh.    Idac_heat_X	50h-59h will calc by BME680 itself
   for (uint8_t i = 0; i < 10; i++) bme6.initGasPointX(i, 250+i*10, 100+i*10, (int16_t)gv_stru_tph.temp1);
