@@ -81,7 +81,7 @@ void gf_send2ts() {
 
   if (WiFi.status() == WL_CONNECTED) {
     // Forming STATUS string for ThingSpeak.com
-    char lv_rtc_str[18] = "______-cFFrFsFzFF";
+    char lv_rtc_str[23] = "______-cFFrFsFzFFv4.00";
     uint8_t lv_hms;
     if (!getLocalTime(&gv_tist)) Serial.print("Failed to obtain time.\n");
     else {
@@ -106,6 +106,13 @@ void gf_send2ts() {
     6 = ESP_SLEEP_WAKEUP_ULP      7 = ESP_SLEEP_WAKEUP_GPIO       8 = ESP_SLEEP_WAKEUP_UART
     9 = ESP_SLEEP_WAKEUP_WIFI     10 = ESP_SLEEP_WAKEUP_COCPU     11 = ESP_SLEEP_WAKEUP_COCPU_TRAP_TRIG
     12 = ESP_SLEEP_WAKEUP_BT                */
+    uint16_t lv_vbat = (gv_vbat * 100);
+    lv_rtc_str[21] = (char)(lv_vbat % 10 + 48);
+    lv_vbat = lv_vbat / 10;
+    lv_rtc_str[20] = (char)(lv_vbat % 10 + 48);
+    lv_vbat = lv_vbat / 10;
+    lv_rtc_str[18] = (char)(lv_vbat % 10 + 48);
+
     Serial.println(lv_rtc_str);
 
     ThingSpeak.setStatus(lv_rtc_str);
@@ -192,7 +199,7 @@ void setup() {
     mkistdf_prnByte(k);
     Serial.print(" found chip code.\n");
   }
-  bme2.begin(cd_FOR_MODE, cd_SB_500MS, cd_FIL_OFF, cd_OS_x16, cd_OS_x16, cd_OS_x16);
+  bme2.begin(cd_FOR_MODE, cd_SB_500MS, cd_FIL_x16, cd_OS_x16, cd_OS_x16, cd_OS_x16);
 
   Serial.print("Check a bme680 => "); // check bmp280 and SW reset
   k = bme6.check(0x77);
@@ -201,11 +208,11 @@ void setup() {
     mkistdf_prnByte(k);
     Serial.print(" found chip code.\n");
   }
-  bme6.begin(cd_FIL_OFF, cd_OS_x16, cd_OS_x16, cd_OS_x16);
+  bme6.begin(cd_FIL_x16, cd_OS_x16, cd_OS_x16, cd_OS_x16);
   // Init ALL 10 heat set point
   // Res_heat_X	5Ah-63h,    Gas_wait_X	64h-6Dh.    Idac_heat_X	50h-59h will calc by BME680 itself
   for (uint8_t i = 0; i < 10; i++) bme6.initGasPointX(i, 250+i*10, 100+i*10, (int16_t)gv_stru_tph.temp1);
-  bme6.initGasPointX(0, 250, 100, (int16_t)gv_stru_tph.temp1);
+  bme6.initGasPointX(0, 350, 100, (int16_t)gv_stru_tph.temp1);
 #ifdef enDEBUG
   printf("10 set Points = idac_heat_, res_heat_, gas_wait_ :\n");
   for (uint8_t i = 0; i < 10; i++) printf("Heat Point %d = %d %d %d\n", i, bme6.readReg(0x50+i), bme6.readReg(0x5A+i), bme6.readReg(0x64+i));
