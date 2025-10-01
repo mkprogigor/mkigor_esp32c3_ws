@@ -10,7 +10,7 @@ V1.2 from 30.08.2025
 #include <time.h>
 #include <ThingSpeak.h>
 #include <Adafruit_VEML7700.h>
-#include <mkigor_BMx280.h>
+#include <mkigor_BMxx80.h>
 #include <mkigor_std.h>
 
 //#define enDEBUG   // uncoment for debug info
