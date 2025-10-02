@@ -50,6 +50,7 @@ void lv_dispRegs(void) {
 }
 
 void gf_readData() {
+
   bme2.do1Meas();
   unsigned long lv_measStart = millis();
   for (uint8_t i = 0; i < 3000; i++) {
@@ -174,7 +175,7 @@ void setup() {
   Serial.begin(115200);
   delay(3000);
   Serial.println("======================= Start Setup ========================");
- #ifdef enDEBUG
+#ifdef enDEBUG
   mkistdf_cpuInfo();
 #endif
 
@@ -223,8 +224,8 @@ void setup() {
 
   configTime(3600, 3600, "pool.ntp.org");   // init time.h win NTP server, +1 GMT & +1 summer time
 
-  gv_sleep_time = 600000000;    //  Light sleep mode time = 600 sec = 10 min
-  // gv_sleep_time = 20000000;
+  // gv_sleep_time = 600000000;    //  Light sleep mode time = 600 sec = 10 min
+  gv_sleep_time = 20000000;
   esp_sleep_enable_timer_wakeup(gv_sleep_time);
   Serial.println("========================= End Setup =======================\n");
 }
