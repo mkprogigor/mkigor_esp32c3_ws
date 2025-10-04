@@ -224,8 +224,8 @@ void setup() {
 
   configTime(3600, 3600, "pool.ntp.org");   // init time.h win NTP server, +1 GMT & +1 summer time
 
-  // gv_sleep_time = 600000000;    //  Light sleep mode time = 600 sec = 10 min
-  gv_sleep_time = 20000000;
+  gv_sleep_time = 600000000;    //  Light sleep mode time = 600 sec = 10 min
+  // gv_sleep_time = 20000000;
   esp_sleep_enable_timer_wakeup(gv_sleep_time);
   Serial.println("========================= End Setup =======================\n");
 }
