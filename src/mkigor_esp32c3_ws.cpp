@@ -15,7 +15,7 @@ clv_*   -   Class private (Local) member (Variable);
 cgf_*   -   Class public (Global) metod (Function), not need, no usefull, becouse we see parenthesis => ();
 clf_*   -   Class private (Local) metod (Function);
 *_stru  -   [or *_stru_t] suffix, as usual, point the type.
-lp_		-	in function, local parameter
+lp_     - 	in function, local parameter
 ************************************************************************************/
 #include <Arduino.h>
 #include <WiFi.h>
@@ -44,6 +44,7 @@ uint64_t        gv_sleep_time;
 RTC_DATA_ATTR uint8_t gv_sleep_count = 0;
 
 //=================================================================================================
+/*  @brief  Pront some status and config registers form BME690 (debug info) */
 void lv_dispRegs(void) {
   // 	Status reg 0x1D =
   //		7		|		6		|		5		|	4	|	3	|	2	|	1	|	0	|
@@ -62,6 +63,7 @@ void lv_dispRegs(void) {
   Serial.println();
 }
 
+/*  @brief  Read data from all sensors in project to global variables   */
 void gf_readData() {
 
   bme2.do1Meas();
@@ -92,6 +94,7 @@ void gf_readData() {
   printf("Lux:%f, Vbat: %f\n\n", gv_lux, gv_vbat);
 }
 
+/*  @brief  Send all data and status info to thingspeak.com   */
 void gf_send2ts() {
   if (WiFi.status() != WL_CONNECTED) mkistdf_wifiCon(); // Run only one time to switch ON wifi
 
@@ -150,6 +153,7 @@ void gf_send2ts() {
   else   Serial.println(" -> No connection WiFi. Data not send to ThingSpeak.");
 }
 
+/*  @brief  Test VEML7700 (Debug info)    */
 void gf_veml_disp() {
   Serial.println("------------------------------------");
   Serial.println("Settings used for reading:");
@@ -184,6 +188,7 @@ void gf_veml_disp() {
 
 //=================================================================================================
 
+/*  @brief  Standart Arduino function setup() */
 void setup() {
   setCpuFrequencyMhz(80); //  must be First
 
@@ -245,6 +250,7 @@ void setup() {
 
 //=================================================================================================
 
+/*  @brief  Standart Arduino function loop() */
 void loop() {
   mkistdf_wifiCon();
   gf_readData();
