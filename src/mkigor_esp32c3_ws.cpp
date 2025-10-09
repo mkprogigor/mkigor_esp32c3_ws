@@ -1,8 +1,21 @@
 /************************************************************************************
-A small project of weathe station on esp32 C3 + BME280 + VEML7700 + BMP280
-by Igor Mkprog, mkprogigor@gmail.com
+A small Arduino project: DIY weather station on esp32-C3, BME280, BME680, VEML7700
+V1.2 from 30.08.2025  by Igor Mkprog, mkprogigor@gmail.com
 
-V1.2 from 30.08.2025
+It is example of use lib: https://github.com/mkprogigor/mkigor_BMxx80
+
+Glossary, abbreviations used in the module. Name of metods (functions) dont use symbol '_',
+only small or capital letter. Symbol '_' divide name in: prefix _ name _ suffix:
+gv_*    -   Global Variable;
+lv_*    -   Local Variable (live inside statement);
+cl_*    -   CLass;
+cd_*    -   Class Definishion;
+cgv_*   -   Class public (Global) member (Variable);
+clv_*   -   Class private (Local) member (Variable);
+cgf_*   -   Class public (Global) metod (Function), not need, no usefull, becouse we see parenthesis => ();
+clf_*   -   Class private (Local) metod (Function);
+*_stru  -   [or *_stru_t] suffix, as usual, point the type.
+lp_		-	in function, local parameter
 ************************************************************************************/
 #include <Arduino.h>
 #include <WiFi.h>
@@ -13,7 +26,7 @@ V1.2 from 30.08.2025
 #include <mkigor_BMxx80.h>
 #include <mkigor_std.h>
 
-//#define enDEBUG   // uncoment for debug info
+//#define enDEBUG   // uncoment it for debug info
 
 WiFiClient        wifi_client;
 Adafruit_VEML7700 veml;
