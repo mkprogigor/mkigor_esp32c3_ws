@@ -1,5 +1,11 @@
-# ESP32-C3 SuperMini + BME280 + VEML7700 + 18650
-A small project of weathe station on esp32 C3 + BME280 + VEML7700<BR>
+# Easy DIY weather station 
+
+A small project of weathe station:<BR>
+Hardware: esp32-C3, BME280, BME680, VEML7700<BR>
+Sofware: C++ Arduino framework on PlatformIO on Visual Studio Code.<BR>
+It is example of use lib:<BR>
+https://github.com/mkprogigor/mkigor_BMxx80<BR>
+Visualisation build in IoT:<BR>
 https://thingspeak.mathworks.com/channels/2994389<BR>
 
 <img src="images/mkigor_esp32c3_ws.png" alt="Scheme" style="width:70%; height:auto;"><BR>
