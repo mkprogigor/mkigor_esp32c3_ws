@@ -44,7 +44,7 @@ uint64_t        gv_sleep_time;
 RTC_DATA_ATTR uint8_t gv_sleep_count = 0;
 
 //=================================================================================================
-/*  @brief  Pront some status and config registers form BME690 (debug info) */
+/*  @brief  Print some status and config registers form BME690 (debug info) */
 void lv_dispRegs(void) {
   // 	Status reg 0x1D =
   //		7		|		6		|		5		|	4	|	3	|	2	|	1	|	0	|
@@ -211,10 +211,10 @@ void setup() {
   }
   else Serial.println("Sensor VEML7700 found.");
 
-  uint8_t k;
+  uint8_t k;  //  code chip
 
-  Serial.print("Check a bme280 => "); // check bme280 and SW reset
-  k = bme2.check(0x76);
+  Serial.print("Check a bme280 => "); 
+  k = bme2.check(0x76);               // check bme280 and SW reset
   if (k == 0) Serial.print("not found, check cables.\n");
   else {
     mkistdf_prnByte(k);
@@ -222,8 +222,8 @@ void setup() {
   }
   bme2.begin(cd_FOR_MODE, cd_SB_500MS, cd_FIL_x2, cd_OS_x16, cd_OS_x16, cd_OS_x16);
 
-  Serial.print("Check a bme680 => "); // check bmp280 and SW reset
-  k = bme6.check(0x77);
+  Serial.print("Check a bme680 => "); 
+  k = bme6.check(0x77);               // check bmp680 and SW reset
   if (k == 0) Serial.print("not found, check cables.\n");
   else {
     mkistdf_prnByte(k);
