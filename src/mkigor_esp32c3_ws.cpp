@@ -52,23 +52,25 @@ void lv_dispRegs(void) {
 void gf_readData() {
 
   bme2.do1Meas();
-  unsigned long lv_measStart = millis();
+  unsigned long lv_measStart = millis(), lv_measDur;
   for (uint8_t i = 0; i < 3000; i++) {
     if (bme2.isMeas()) delay(1);
     else break;
   }
-  printf("BME280 measuring TPHG time = %d\n", millis()-lv_measStart );
+  lv_measDur = millis()-lv_measStart;
+  printf("BME280 measuring TPHG time = %d\n", lv_measDur );
   gv_stru_tph = bme2.readTPH();
   printf("BME280 T:%f, P:%f, H:%f\n\n", gv_stru_tph.temp1, gv_stru_tph.pres1, gv_stru_tph.humi1);
 
-  bme6.initGasPointX(0, 300, 100, (int16_t)gv_stru_tph.temp1);
+  bme6.initGasPointX(0, 350, 100, (int16_t)gv_stru_tph.temp1);
   bme6.do1Meas();
   lv_measStart = millis();
   for (uint8_t i = 0; i < 3000; i++) {
     if (bme6.isMeas()) delay(1);
     else break;
   }
-  printf("BME680 measuring TPHG time = %d\n", millis()-lv_measStart );
+  lv_measDur = millis()-lv_measStart;
+  printf("BME680 measuring TPHG time = %d\n", lv_measDur );
   gv_stru_tphg = bme6.readTPHG();
   printf("BME680 T:%f, P:%f, H:%f, G:%f\n\n", gv_stru_tphg.temp1, gv_stru_tphg.pres1, gv_stru_tphg.humi1, gv_stru_tphg.gasr1);
 
@@ -211,9 +213,7 @@ void setup() {
   }
   bme6.begin(cd_FIL_x2, cd_OS_x16, cd_OS_x16, cd_OS_x16);
   // Init ALL 10 heat set point
-  // Res_heat_X	5Ah-63h,    Gas_wait_X	64h-6Dh.    Idac_heat_X	50h-59h will calc by BME680 itself
-  for (uint8_t i = 0; i < 10; i++) bme6.initGasPointX(i, 250+i*10, 100+i*10, (int16_t)gv_stru_tph.temp1);
-  bme6.initGasPointX(0, 350, 100, (int16_t)gv_stru_tph.temp1);
+  for (uint8_t i = 0; i < 10; i++) bme6.initGasPointX(i, 250+i*10, 60+i*10);
 #ifdef enDEBUG
   printf("10 set Points = idac_heat_, res_heat_, gas_wait_ :\n");
   for (uint8_t i = 0; i < 10; i++) printf("Heat Point %d = %d %d %d\n", i, bme6.readReg(0x50+i), bme6.readReg(0x5A+i), bme6.readReg(0x64+i));
