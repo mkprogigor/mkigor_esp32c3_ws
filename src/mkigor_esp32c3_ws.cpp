@@ -1,6 +1,6 @@
 /************************************************************************************
-A small Arduino project: DIY weather station on esp32-C3, BME280, BME680, VEML7700
-V1.2 from 30.08.2025  by Igor Mkprog, mkprogigor@gmail.com
+A small Arduino project: Easy DIY weather station on esp32-C3, BME280, BME680, VEML7700
+V1.2 from 10.10.2025  by Igor Mkprog, mkprogigor@gmail.com
 
 It is example of use lib: https://github.com/mkprogigor/mkigor_BMxx80
 
