@@ -1,6 +1,6 @@
 # Easy DIY weather station 
 
-A small project of weathe station:<BR>
+A small project of DIY weather station:<BR>
 Hardware: esp32-C3, BME280, BME680, VEML7700<BR>
 Sofware: C++ Arduino framework on PlatformIO on Visual Studio Code.<BR>
 It is example of use lib:<BR>
