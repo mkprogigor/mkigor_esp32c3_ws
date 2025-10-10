@@ -6,7 +6,7 @@
 	@remarks	Glossary, abbreviations used in the module.
 	@details	Name of functions dont use symbol '_', only small or capital letters.
 				Symbol '_' divide name in: prefix _ name _ suffix:
-	@var		gv_*    -   Global Variable;
+	@var	gv_*    -   Global Variable;
 				lv_*    -   Local Variable (live inside statement);
 				cl_*    -   CLass;
 				cd_*    -   Class Definishion;
