@@ -1,22 +1,23 @@
-/************************************************************************************
-A small Arduino project: Easy DIY weather station on esp32-C3, BME280, BME680, VEML7700
-V1.2 from 10.10.2025  by Igor Mkprog, mkprogigor@gmail.com
+/*
+	@brief		A small Arduino project: Easy DIY weather station on esp32-C3, BME280, BME680, VEML7700.
+	@author		Igor Mkprog, mkprogigor@gmail.com
+	@version	V1.1	@date	10.10.2025
 
-It is example of use lib: https://github.com/mkprogigor/mkigor_BMxx80
+	@remarks	Glossary, abbreviations used in the module.
+	@details	Name of functions dont use symbol '_', only small or capital letters.
+				Symbol '_' divide name in: prefix _ name _ suffix:
+	@var		gv_*    -   Global Variable;
+				lv_*    -   Local Variable (live inside statement);
+				cl_*    -   CLass;
+				cd_*    -   Class Definishion;
+				cgv_*   -   Class public (Global) member (Variable);
+				clv_*   -   Class private (Local) member (Variable);
+				cgf_*   -   Class public (Global) metod (Function), not need, no usefull, becouse we see parenthesis => ();
+				clf_*   -   Class private (Local) metod (Function);
+				lp_		-	in function, local parameter
+				*_stru  -   [or *_stru_t] suffix, as usual, point the type.
+*/
 
-Glossary, abbreviations used in the module. Name of metods (functions) dont use symbol '_',
-only small or capital letter. Symbol '_' divide name in: prefix _ name _ suffix:
-gv_*    -   Global Variable;
-lv_*    -   Local Variable (live inside statement);
-cl_*    -   CLass;
-cd_*    -   Class Definishion;
-cgv_*   -   Class public (Global) member (Variable);
-clv_*   -   Class private (Local) member (Variable);
-cgf_*   -   Class public (Global) metod (Function), not need, no usefull, becouse we see parenthesis => ();
-clf_*   -   Class private (Local) metod (Function);
-*_stru  -   [or *_stru_t] suffix, as usual, point the type.
-lp_     - 	in function, local parameter
-************************************************************************************/
 #include <Arduino.h>
 #include <WiFi.h>
 #include <Wire.h>
