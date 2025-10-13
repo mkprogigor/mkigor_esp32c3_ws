@@ -4,9 +4,9 @@
 *	@version	V1.1	@date	10.10.2025
 *	@example	https://github.com/mkprogigor/mkigor_BMxx80/blob/main/examples/test_bme680.ino
 *
-*	@remarks	Glossary, abbreviations used in the module.
-*		Name of functions dont use symbol '_', only small or capital letters.
-*		Symbol '_' divide name in: prefix_nameOfFunction_suffix (it can be only 2 '_' in name):
+*	@remarks	Glossary, abbreviations used in the module. Name has small or capital letters ("camelCase"),
+*	and consist only 2 or 1 symbol '_', that divede it in => prefix + name + suffix.
+*	prefix: 
 *		gv_*	- Global Variable;
 *		lv_*	- Local Variable (live inside statement);
 *		cl_*	- CLass;
@@ -16,8 +16,9 @@
 *		cgf_*	- Class public (Global) metod (Function), not need, no usefull, becouse we see parenthesis => ();
 *		clf_*	- Class private (Local) metod (Function);
 *		lp_		- in function, local parameter
-*		*_stru	- [or *_stru_t] suffix, as usual, point the type.
-*		example: gv_tphg_stru - global var structure.
+*	suffix:
+*		*_stru	- [or *_stru_t] as usual, point the type.
+	example:	- prefix_nameOfFuncOrVar_suffix, gv_tphg_stru => global var (tphg) structure.
 */
 
 #include <Arduino.h>
