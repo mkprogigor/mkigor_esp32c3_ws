@@ -15,9 +15,9 @@
 *		clv_*	- Class private (Local) member (Variable);
 *		cgf_*	- Class public (Global) metod (Function), not need, no usefull, becouse we see parenthesis => ();
 *		clf_*	- Class private (Local) metod (Function);
-*		lp_		- in function, local parameter
+*		lp_*	- in function, local parameter.
 *	suffix:
-*		*_stru	- [or *_stru_t] as usual, point the type.
+*		*_stru	- [like *_t] as usual, point to the type.
 	example:	- prefix_nameOfFuncOrVar_suffix, gv_tphg_stru => global var (tphg) structure.
 */
 
