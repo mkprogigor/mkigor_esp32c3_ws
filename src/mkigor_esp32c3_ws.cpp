@@ -48,17 +48,17 @@ uint64_t			gv_sleep_time;
 RTC_DATA_ATTR uint8_t gv_sleep_count = 0;
 
 //=================================================================================================
-/**	@brief	Print some status and config registers form BME690 (debug info)	*/
+/**	@brief	Print status and config registers form BME690 (debug info)	*/
 void lv_dispRegs(void) {
 	///	Status reg 0x1D =
-	///		7		|		6		|		5		|	4	|	3	|	2	|	1	|	0	|
-	///	new_data_0	| gas_measuring	| 	measuring	| 	x	|	gas_meas_index_0<3:0>		|
+	///		7		|		6		|		5		|	4		|	3	|	2	|	1	|	0	|
+	///	new_data_0	| gas_measuring	| 	measuring	| 	x		|		gas_meas_index_0		|
 	///	Gas_r_lsb reg 0x2B =
 	///		7		|		6		|		5		|	4		|	3	|	2	|	1	|	0	|
-	///	gas_r<1:0>	| 	gas_valid_r	| head_stab_r	|gas_range_	|
+	///			gas_r				| 	gas_valid_r	|head_stab_r|			gas_range_			|
 	///	Ctrl_gas_1 reg 0x71 =
-	///		7		|		6		|		5		|	4	|	3	|	2	|	1	|	0	|
-	///				|				|				|run_gas|  			nb_conv<3:0>		|
+	///		7		|		6		|		5		|	4		|	3	|	2	|	1	|	0	|
+	///				|				|				|	run_gas	|  			nb_conv				|
 	Serial.print("Status= ");      mkistdf_prnByte(bme6.readReg(0x1D));
 	Serial.print("Gas_r_lsb= ");   mkistdf_prnByte(bme6.readReg(0x2B));
 	Serial.print("Ctrl_gas_0= ");  mkistdf_prnByte(bme6.readReg(0x70));
