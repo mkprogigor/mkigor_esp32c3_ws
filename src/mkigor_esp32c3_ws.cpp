@@ -5,7 +5,7 @@
 *	@example	https://github.com/mkprogigor/mkigor_BMxx80/blob/main/examples/test_bme680.ino
 *
 *	@remarks	Glossary, abbreviations used in the module. Name has small or capital letters ("camelCase"),
-*	and consist only 2 or 1 symbol '_', that divede it in => prefix + name + suffix.
+*	and consist only 2 or 1 symbol '_', that divide it in => prefix + name + suffix.
 *	prefix: 
 *		gv_*	- Global Variable;
 *		lv_*	- Local Variable (live inside statement);
@@ -17,8 +17,9 @@
 *		clf_*	- Class private (Local) metod (Function);
 *		lp_*	- in function, local parameter.
 *	suffix:
-*		*_stru	- [like *_t] as usual, point to the type.
-	example:	- prefix_nameOfFuncOrVar_suffix, gv_tphg_stru => global var (tphg) structure.
+*		like ending *_t, as usual, point to the type, informative, but not mandatory to use.
+*		possible is: _i8, _i16, _i32, _i64, _u8, _u16, _u32, _u64, _f, _df, _c, _b, _stru, etc.
+*	example:	- prefix_nameOfFuncOrVar_suffix, gv_tphg_stru => global var (tphg) structure.
 */
 
 #include <Arduino.h>
