@@ -27,22 +27,22 @@
 #include <Wire.h>
 #include <time.h>
 #include <ThingSpeak.h>
-#include <Adafruit_VEML7700.h>
+#include <mkigor_veml.h>
 #include <mkigor_BMxx80.h>
 #include <mkigor_std.h>
 
-//#define enDEBUG		///	uncoment it for debug info
+//#define DEBUG_EN		///	uncoment it for debug info
 
 WiFiClient			wifi_client;
-Adafruit_VEML7700	veml;
+cl_VEML7700			veml;
 cl_BME280			bme2;
 cl_BME680			bme6;
 
+AW_stru_t			gv_lux;
 tph_stru			gv_stru_tph;
 tphg_stru			gv_stru_tphg;
 const static float	gv_vbat_coef = 5.8;
 static float		gv_vbat;
-static float		gv_lux;
 
 struct tm			gv_tist;		///	time stamp structure from time.h
 uint64_t			gv_sleep_time;
@@ -70,6 +70,7 @@ void lv_dispRegs(void) {
 
 /**	@brief  Read data from all sensors in project to global variables	*/
 void gf_readData() {
+	veml.wakeUp();
 
 	bme2.do1Meas();
 	unsigned long lv_measStart = millis(), lv_measDur;
@@ -94,7 +95,9 @@ void gf_readData() {
 	gv_stru_tphg = bme6.readTPHG();
 	printf("BME680 T:%f, P:%f, H:%f, G:%f\n\n", gv_stru_tphg.temp1, gv_stru_tphg.pres1, gv_stru_tphg.humi1, gv_stru_tphg.gasr1);
 
-	gv_lux = veml.readLux(VEML_LUX_AUTO);
+	gv_lux = veml.readAW();
+	delay(1000);
+	gv_lux = veml.readAW();
 	gv_vbat = (analogRead(A1) * gv_vbat_coef) / 4096;
 	printf("Lux:%f, Vbat: %f\n\n", gv_lux, gv_vbat);
 }
@@ -146,7 +149,7 @@ void gf_send2ts() {
 		ThingSpeak.setField(4, gv_stru_tphg.temp1);
 		ThingSpeak.setField(5, gv_stru_tphg.pres1);
 		ThingSpeak.setField(6, gv_stru_tphg.humi1);
-		ThingSpeak.setField(7, gv_lux);
+		ThingSpeak.setField(7, float(gv_lux.als1));
 		ThingSpeak.setField(8, gv_stru_tphg.gasr1);
 
 		int t_ret_code = ThingSpeak.writeFields(my_channel_num, write_api_key);
@@ -158,39 +161,6 @@ void gf_send2ts() {
 	else   Serial.println(" -> No connection WiFi. Data not send to ThingSpeak.");
 }
 
-/**	@brief  Test VEML7700 (Debug info)	*/
-void gf_veml_disp() {
-	Serial.println("------------------------------------");
-	Serial.println("Settings used for reading:");
-	Serial.print(F("Gain: "));
-	switch (veml.getGain()) {
-	case VEML7700_GAIN_1: Serial.println("1"); break;
-	case VEML7700_GAIN_2: Serial.println("2"); break;
-	case VEML7700_GAIN_1_4: Serial.println("1/4"); break;
-	case VEML7700_GAIN_1_8: Serial.println("1/8"); break;
-	}
-	Serial.print(F("Integration Time (ms): "));
-	switch (veml.getIntegrationTime()) {
-	case VEML7700_IT_25MS: Serial.println("25"); break;
-	case VEML7700_IT_50MS: Serial.println("50"); break;
-	case VEML7700_IT_100MS: Serial.println("100"); break;
-	case VEML7700_IT_200MS: Serial.println("200"); break;
-	case VEML7700_IT_400MS: Serial.println("400"); break;
-	case VEML7700_IT_800MS: Serial.println("800"); break;
-	}
-
-	Serial.print("Gain = "); Serial.println(veml.getGain());
-	Serial.print("GainValue = "); Serial.println(veml.getGainValue());
-	Serial.print("getIntegrationTime = "); Serial.println(veml.getIntegrationTime());
-	Serial.print("getIntegrationTimeValue = "); Serial.println(veml.getIntegrationTimeValue());
-	Serial.print("getLowThreshold = "); Serial.println(veml.getLowThreshold());
-	Serial.print("getHighThreshold = "); Serial.println(veml.getHighThreshold());
-	Serial.print("getPersistence = "); Serial.println(veml.getPersistence());
-	Serial.print("getPowerSaveMode = "); Serial.println(veml.getPowerSaveMode());
-	Serial.print("interruptStatus() = "); Serial.println(veml.interruptStatus());
-	Serial.println();
-}
-
 //=================================================================================================
 
 /**	@brief  Standart Arduino function setup()	*/
@@ -200,7 +170,7 @@ void setup() {
 	Serial.begin(115200);
 	delay(3000);
 	Serial.println("======================= Start Setup ========================");
-#ifdef enDEBUG
+#ifdef DEBUG_EN
 	mkistdf_cpuInfo();
 #endif
 
@@ -210,11 +180,13 @@ void setup() {
 
 	Wire.begin();
 
-	if (!veml.begin()) {
-		Serial.println("Sensor VEML7700 not found.");
-		veml.setPowerSaveMode(3);
+	Serial.print("\nCheck the sensor VEML7700 => ");
+	uint16_t lv_chipCode = veml.check(0x10);
+	if ( lv_chipCode == 0)	Serial.println("Not found, check cables.");
+	else {
+		Serial.print("found with chip code (command code 0x07) = ");
+		Serial.println(lv_chipCode, HEX);
 	}
-	else Serial.println("Sensor VEML7700 found.");
 
 	uint8_t k;	///	code chip
 
@@ -237,7 +209,7 @@ void setup() {
 	bme6.begin(cd_FIL_x2, cd_OS_x16, cd_OS_x16, cd_OS_x16);
 	// Init ALL 10 heat set point
 	for (uint8_t i = 0; i < 10; i++) bme6.initGasPointX(i, 250 + i * 10, 60 + i * 10);
-#ifdef enDEBUG
+#ifdef DEBUG_EN
 	printf("10 set Points = idac_heat_, res_heat_, gas_wait_ :\n");
 	for (uint8_t i = 0; i < 10; i++) printf("Heat Point %d = %d %d %d\n", i, bme6.readReg(0x50 + i), bme6.readReg(0x5A + i), bme6.readReg(0x64 + i));
 #endif
@@ -247,8 +219,8 @@ void setup() {
 
 	configTime(3600, 3600, "pool.ntp.org");   // init time.h win NTP server, +1 GMT & +1 summer time
 
-	gv_sleep_time = 600000000;    //  Light sleep mode time = 600 sec = 10 min
-	// gv_sleep_time = 20000000;
+	// gv_sleep_time = 600000000;    //  Light sleep mode time = 600 sec = 10 min
+	gv_sleep_time = 20000000;
 	esp_sleep_enable_timer_wakeup(gv_sleep_time);
 	Serial.println("========================= End Setup =======================\n");
 }
@@ -257,12 +229,13 @@ void setup() {
 
 /**	@brief  Standart Arduino function loop()	*/
 void loop() {
+	veml.wakeUp();
 	mkistdf_wifiCon();
+	delay(500);
 	gf_readData();
 
-	delay(500);
-	gf_send2ts();
-
+	// gf_send2ts();
+	veml.sleep();
 	Serial.println("WiFi disconect.");
 	WiFi.disconnect();
 
@@ -270,8 +243,7 @@ void loop() {
 	delay(500);
 	esp_light_sleep_start();
 	delay(500);
-	Serial.print("\n...WakeUp from sleep mode, Ncount = ");
-	Serial.println(gv_sleep_count);
+	Serial.print("\n...WakeUp from sleep mode, Ncount = ");	Serial.println(gv_sleep_count);
 	Serial.println();
 
 	gv_sleep_count++;
