@@ -70,10 +70,10 @@ void lv_dispRegs(void) {
 
 /**	@brief  Read data from all sensors in project to global variables	*/
 void gf_readData() {
-	veml.wakeUp();
+	unsigned long lv_measStart, lv_measDur;
 
 	bme2.do1Meas();
-	unsigned long lv_measStart = millis(), lv_measDur;
+	lv_measStart = millis();
 	for (uint8_t i = 0; i < 3000; i++) {
 		if (bme2.isMeas()) delay(1);
 		else break;
@@ -98,8 +98,10 @@ void gf_readData() {
 	gv_lux = veml.readAW();
 	delay(1000);
 	gv_lux = veml.readAW();
+
 	gv_vbat = (analogRead(A1) * gv_vbat_coef) / 4096;
-	printf("Lux:%f, Vbat: %f\n\n", gv_lux, gv_vbat);
+	
+	printf("Lux:%d, Vbat: %f\n\n", gv_lux.als1, gv_vbat);
 }
 
 /**	@brief  Send all data and status info to thingspeak.com	*/
@@ -219,8 +221,8 @@ void setup() {
 
 	configTime(3600, 3600, "pool.ntp.org");   // init time.h win NTP server, +1 GMT & +1 summer time
 
-	// gv_sleep_time = 600000000;    //  Light sleep mode time = 600 sec = 10 min
-	gv_sleep_time = 20000000;
+	gv_sleep_time = 600000000;    //  Light sleep mode time = 600 sec = 10 min
+	// gv_sleep_time = 20000000;
 	esp_sleep_enable_timer_wakeup(gv_sleep_time);
 	Serial.println("========================= End Setup =======================\n");
 }
@@ -230,24 +232,25 @@ void setup() {
 /**	@brief  Standart Arduino function loop()	*/
 void loop() {
 	veml.wakeUp();
-	mkistdf_wifiCon();
-	delay(500);
-	gf_readData();
+	delay(1000);
 
-	// gf_send2ts();
+	mkistdf_wifiCon();
+	gf_readData();
+	gf_send2ts();
+
 	veml.sleep();
 	Serial.println("WiFi disconect.");
 	WiFi.disconnect();
 
 	Serial.print("Go to light sleep mode for sec = ");  Serial.print(gv_sleep_time / 1000000);
-	delay(500);
+	delay(100);
 	esp_light_sleep_start();
-	delay(500);
+	delay(100);
 	Serial.print("\n...WakeUp from sleep mode, Ncount = ");	Serial.println(gv_sleep_count);
 	Serial.println();
 
 	gv_sleep_count++;
-	// delay(30000);
+	// delay(20000);
 }
 
 //=================================================================================================
