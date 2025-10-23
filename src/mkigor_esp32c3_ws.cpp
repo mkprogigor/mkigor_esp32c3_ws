@@ -1,26 +1,24 @@
 /**
-*	@brief		A small Arduino project: Easy DIY weather station on esp32-C3, BME280, BME680, VEML7700.
-*	@author		Igor Mkprog, mkprogigor@gmail.com
-*	@version	V1.1	@date	10.10.2025
-*	@example	https://github.com/mkprogigor/mkigor_BMxx80/blob/main/examples/test_bme680.ino
-*
-*	@remarks	Glossary, abbreviations used in the module. Name has small or capital letters ("camelCase"),
-*	and consist only 2 or 1 symbol '_', that divide it in => prefix + name + suffix.
-*	prefix: 
-*		gv_*	- Global Variable;
-*		lv_*	- Local Variable (live inside statement);
-*		cl_*	- CLass;
-*		cd_*	- Class Definition;
-*		cgv_*	- Class public (Global) member (Variable);
-*		clv_*	- Class private (Local) member (Variable);
-*		cgf_*	- Class public (Global) metod (Function), not need, no usefull, becouse we see parenthesis => ();
-*		clf_*	- Class private (Local) metod (Function);
-*		lp_*	- in function, local parameter.
-*	suffix:
-*		like ending *_t, as usual, point to the type, informative, but not mandatory to use.
-*		possible is: _i8, _i16, _i32, _i64, _u8, _u16, _u32, _u64, _f, _df, _c, _b, _stru, etc.
-*	example:	- prefix_nameOfFuncOrVar_suffix, gv_tphg_stru => global var (tphg) structure.
-*/
+ * @brief	A small Arduino project: Easy DIY weather station on esp32-C3, BME280, BME680, VEML7700.
+ * @author	Igor Mkprog, mkprogigor@gmail.com
+ * @version	V1.1	@date	10.10.2025
+ * 
+ * @remarks	Glossary, abbreviations used in the module. Name has small or capital letters ("camelCase"),
+ *	and consist only 2 or 1 symbol '_', that divide it in => prefix + name + suffix.
+ * 	prefix: 
+ * 		gv_*	- Global Variable;
+ * 		lv_*	- Local Variable (live inside statement);
+ * 		cl_*	- CLass;
+ * 		cd_*	- Class Definition;
+ * 		cgv_*	- Class public (Global) member (Variable);
+ * 		clv_*	- Class private (Local) member (Variable);
+ * 		clf_*	- Class private (Local) metod (Function);
+ * 		lp_*	- in function, local parameter.
+ * 	suffix:
+ * 		like ending *_t, as usual, point to the type, informative, but not mandatory to use.
+ * 		possible is: _i8, _i16, _i32, _i64, _u8, _u16, _u32, _u64, _f, _df, _c, _b, _stru, etc.
+ * 		example:	- prefix_nameOfFuncOrVar_suffix, gv_tphg_stru => global var (tphg) structure.
+ */
 
 #include <Arduino.h>
 #include <WiFi.h>
@@ -39,6 +37,7 @@ cl_BME280			bme2;
 cl_BME680			bme6;
 
 AW_stru_t			gv_lux;
+uint8_t				gv_luxGT;
 tph_stru			gv_stru_tph;
 tphg_stru			gv_stru_tphg;
 const static float	gv_vbat_coef = 5.8;
@@ -98,6 +97,8 @@ void gf_readData() {
 	gv_lux = veml.readAW();
 	delay(1000);
 	gv_lux = veml.readAW();
+	GTidx_stru_t lv_gtIdx = veml.readGainTime();
+	gv_luxGT = lv_gtIdx.idxGain1 << 4 | lv_gtIdx.idxTime1;
 
 	gv_vbat = (analogRead(A1) * gv_vbat_coef) / 4096;
 	
@@ -110,7 +111,7 @@ void gf_send2ts() {
 
 	if (WiFi.status() == WL_CONNECTED) {
 		// Forming STATUS string for ThingSpeak.com
-		char lv_rtc_str[23] = "______-cFFrFsFzFFv4.00";
+		char lv_rtc_str[23] = "______-rFsFzFFv4.00l00";
 		uint8_t lv_hms;
 		if (!getLocalTime(&gv_tist)) Serial.print("Failed to obtain time.\n");
 		else {
@@ -122,9 +123,6 @@ void gf_send2ts() {
 			lv_hms = gv_tist.tm_sec;
 			lv_rtc_str[4] = (char)(lv_hms / 10 + 48);   lv_rtc_str[5] = (char)(lv_hms % 10 + 48);
 		}
-		lv_rtc_str[11] = mkistdf_byte2char(esp_reset_reason());
-		lv_rtc_str[13] = mkistdf_byte2char(esp_sleep_get_wakeup_cause());
-		lv_rtc_str[15] = mkistdf_byte2char(gv_sleep_count >> 4);   lv_rtc_str[16] = mkistdf_byte2char(gv_sleep_count);
 		/*  // Function esp_reset_reason() return RESET reason:
 		0 = ESP_RST_UNKNOWN       1 = ESP_RST_POWERON       2 = ESP_RST_EXT       3 = ESP_RST_SW
 		4 = ESP_RST_PANIC         5 = ESP_RST_INT_WDT       6 = ESP_RST_TASK_WDT  7 = ESP_RST_WDT
@@ -135,12 +133,21 @@ void gf_send2ts() {
 		6 = ESP_SLEEP_WAKEUP_ULP      7 = ESP_SLEEP_WAKEUP_GPIO       8 = ESP_SLEEP_WAKEUP_UART
 		9 = ESP_SLEEP_WAKEUP_WIFI     10 = ESP_SLEEP_WAKEUP_COCPU     11 = ESP_SLEEP_WAKEUP_COCPU_TRAP_TRIG
 		12 = ESP_SLEEP_WAKEUP_BT                */
+		lv_rtc_str[8] = mkistdf_byte2char(esp_reset_reason());
+		lv_rtc_str[10] = mkistdf_byte2char(esp_sleep_get_wakeup_cause());
+
+		lv_rtc_str[12] = mkistdf_byte2char(gv_sleep_count >> 4);
+		lv_rtc_str[13] = mkistdf_byte2char(gv_sleep_count);
+
 		uint16_t lv_vbat = (gv_vbat * 100);
-		lv_rtc_str[21] = (char)(lv_vbat % 10 + 48);
-		lv_vbat = lv_vbat / 10;
-		lv_rtc_str[20] = (char)(lv_vbat % 10 + 48);
-		lv_vbat = lv_vbat / 10;
 		lv_rtc_str[18] = (char)(lv_vbat % 10 + 48);
+		lv_vbat = lv_vbat / 10;
+		lv_rtc_str[17] = (char)(lv_vbat % 10 + 48);
+		lv_vbat = lv_vbat / 10;
+		lv_rtc_str[15] = (char)(lv_vbat % 10 + 48);
+
+		lv_rtc_str[20] = mkistdf_byte2char(gv_luxGT >> 4);
+		lv_rtc_str[21] = mkistdf_byte2char(gv_luxGT);
 
 		Serial.println(lv_rtc_str);
 
