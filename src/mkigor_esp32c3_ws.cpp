@@ -23,7 +23,6 @@
 #include <Arduino.h>
 #include <WiFi.h>
 #include <Wire.h>
-#include <time.h>
 #include <ThingSpeak.h>
 #include <mkigor_veml.h>
 #include <mkigor_BMxx80.h>
@@ -43,7 +42,6 @@ tphg_stru			gv_stru_tphg;
 const static float	gv_vbat_coef = 5.8;
 static float		gv_vbat;
 
-struct tm			gv_tist;		///	time stamp structure from time.h
 uint64_t			gv_sleep_time;
 RTC_DATA_ATTR uint8_t gv_sleep_count = 0;
 
@@ -102,27 +100,24 @@ void gf_readData() {
 
 	gv_vbat = (analogRead(A1) * gv_vbat_coef) / 4096;
 	
-	printf("Lux:%d, Vbat: %f\n\n", gv_lux.als1, gv_vbat);
+	printf("Lux:%d, Lux idx GT:0x%X, Vbat: %f\n\n", gv_lux.als1, gv_luxGT, gv_vbat);
 }
 
 /**	@brief  Send all data and status info to thingspeak.com	*/
 void gf_send2ts() {
 	if (WiFi.status() != WL_CONNECTED) mkistdf_wifiCon(); // Run only one time to switch ON wifi
 
-	if (WiFi.status() == WL_CONNECTED) {
-		// Forming STATUS string for ThingSpeak.com
-		char lv_rtc_str[23] = "______-rFsFzFFv4.00l00";
-		uint8_t lv_hms;
-		if (!getLocalTime(&gv_tist)) Serial.print("Failed to obtain time.\n");
-		else {
-			Serial.print(&gv_tist);   Serial.print(" => time update success.\n");
-			lv_hms = gv_tist.tm_hour;
-			lv_rtc_str[0] = (char)(lv_hms / 10 + 48);   lv_rtc_str[1] = (char)(lv_hms % 10 + 48);
-			lv_hms = gv_tist.tm_min;
-			lv_rtc_str[2] = (char)(lv_hms / 10 + 48);   lv_rtc_str[3] = (char)(lv_hms % 10 + 48);
-			lv_hms = gv_tist.tm_sec;
-			lv_rtc_str[4] = (char)(lv_hms / 10 + 48);   lv_rtc_str[5] = (char)(lv_hms % 10 + 48);
+	if (WiFi.status() == WL_CONNECTED) {		/// Forming STATUS string for ThingSpeak.com
+		char lv_status[23] = "______-rFsFzFFv4.00l00";
+
+		DT_stru_t lv_DT;						/// get time
+		if (mkistdf_getDateTime(lv_DT)) {
+			lv_status[0] = (char)(lv_DT.hour / 10 + 48);	lv_status[1] = (char)(lv_DT.hour % 10 + 48);
+			lv_status[2] = (char)(lv_DT.min / 10 + 48);		lv_status[3] = (char)(lv_DT.min % 10 + 48);
+			lv_status[4] = (char)(lv_DT.sec / 10 + 48);		lv_status[5] = (char)(lv_DT.sec % 10 + 48);
 		}
+		else Serial.println("Failed to obtain http GET time.\n");
+
 		/*  // Function esp_reset_reason() return RESET reason:
 		0 = ESP_RST_UNKNOWN       1 = ESP_RST_POWERON       2 = ESP_RST_EXT       3 = ESP_RST_SW
 		4 = ESP_RST_PANIC         5 = ESP_RST_INT_WDT       6 = ESP_RST_TASK_WDT  7 = ESP_RST_WDT
@@ -133,25 +128,22 @@ void gf_send2ts() {
 		6 = ESP_SLEEP_WAKEUP_ULP      7 = ESP_SLEEP_WAKEUP_GPIO       8 = ESP_SLEEP_WAKEUP_UART
 		9 = ESP_SLEEP_WAKEUP_WIFI     10 = ESP_SLEEP_WAKEUP_COCPU     11 = ESP_SLEEP_WAKEUP_COCPU_TRAP_TRIG
 		12 = ESP_SLEEP_WAKEUP_BT                */
-		lv_rtc_str[8] = mkistdf_byte2char(esp_reset_reason());
-		lv_rtc_str[10] = mkistdf_byte2char(esp_sleep_get_wakeup_cause());
-
-		lv_rtc_str[12] = mkistdf_byte2char(gv_sleep_count >> 4);
-		lv_rtc_str[13] = mkistdf_byte2char(gv_sleep_count);
+		lv_status[8]  = mkistdf_byte2char(esp_reset_reason());
+		lv_status[10] = mkistdf_byte2char(esp_sleep_get_wakeup_cause());
+		lv_status[12] = mkistdf_byte2char(gv_sleep_count >> 4);
+		lv_status[13] = mkistdf_byte2char(gv_sleep_count);
 
 		uint16_t lv_vbat = (gv_vbat * 100);
-		lv_rtc_str[18] = (char)(lv_vbat % 10 + 48);
+		lv_status[18] = (char)(lv_vbat % 10 + 48);
 		lv_vbat = lv_vbat / 10;
-		lv_rtc_str[17] = (char)(lv_vbat % 10 + 48);
+		lv_status[17] = (char)(lv_vbat % 10 + 48);
 		lv_vbat = lv_vbat / 10;
-		lv_rtc_str[15] = (char)(lv_vbat % 10 + 48);
+		lv_status[15] = (char)(lv_vbat % 10 + 48);
+		lv_status[20] = mkistdf_byte2char(gv_luxGT >> 4);
+		lv_status[21] = mkistdf_byte2char(gv_luxGT);
+		Serial.println(lv_status);
 
-		lv_rtc_str[20] = mkistdf_byte2char(gv_luxGT >> 4);
-		lv_rtc_str[21] = mkistdf_byte2char(gv_luxGT);
-
-		Serial.println(lv_rtc_str);
-
-		ThingSpeak.setStatus(lv_rtc_str);
+		ThingSpeak.setStatus(lv_status);
 		ThingSpeak.setField(1, gv_stru_tph.temp1); // set the fields with the values
 		ThingSpeak.setField(2, gv_stru_tph.pres1);
 		ThingSpeak.setField(3, gv_stru_tph.humi1);
@@ -197,22 +189,22 @@ void setup() {
 		Serial.println(lv_chipCode, HEX);
 	}
 
-	uint8_t k;	///	code chip
+	uint8_t lv_kc;	///	code chip
 
 	Serial.print("Check a bme280 => ");
-	k = bme2.check(0x76);               // check bme280 and SW reset
-	if (k == 0) Serial.print("not found, check cables.\n");
+	lv_kc = bme2.check(0x76);               // check bme280 and SW reset
+	if (lv_kc == 0) Serial.print("not found, check cables.\n");
 	else {
-		mkistdf_prnByte(k);
+		mkistdf_prnByte(lv_kc);
 		Serial.print(" found chip code.\n");
 	}
 	bme2.begin(cd_FOR_MODE, cd_SB_500MS, cd_FIL_x2, cd_OS_x16, cd_OS_x16, cd_OS_x16);
 
 	Serial.print("Check a bme680 => ");
-	k = bme6.check(0x77);               // check bmp680 and SW reset
-	if (k == 0) Serial.print("not found, check cables.\n");
+	lv_kc = bme6.check(0x77);               // check bmp680 and SW reset
+	if (lv_kc == 0) Serial.print("not found, check cables.\n");
 	else {
-		mkistdf_prnByte(k);
+		mkistdf_prnByte(lv_kc);
 		Serial.print(" found chip code.\n");
 	}
 	bme6.begin(cd_FIL_x2, cd_OS_x16, cd_OS_x16, cd_OS_x16);
@@ -238,7 +230,9 @@ void setup() {
 
 /**	@brief  Standart Arduino function loop()	*/
 void loop() {
-	veml.wakeUp();
+	Serial.print("Ncount (0-255) = ");	Serial.println(gv_sleep_count);
+	veml.writeGainTime(2, 2);	// set gain = 1, time = 100 ms,
+	veml.wakeUp();				// in my case sensor doesn't have straight sunlight < 500 lux
 	delay(1000);
 
 	mkistdf_wifiCon();
@@ -248,16 +242,13 @@ void loop() {
 	veml.sleep();
 	Serial.println("WiFi disconect.");
 	WiFi.disconnect();
-
 	Serial.print("Go to light sleep mode for sec = ");  Serial.print(gv_sleep_time / 1000000);
-	delay(100);
+	delay(200);
 	esp_light_sleep_start();
-	delay(100);
-	Serial.print("\n...WakeUp from sleep mode, Ncount = ");	Serial.println(gv_sleep_count);
-	Serial.println();
-
-	gv_sleep_count++;
 	// delay(20000);
+	delay(200);
+	Serial.println("\nWakeUp from sleep mode.");
+	gv_sleep_count++;
 }
 
 //=================================================================================================
