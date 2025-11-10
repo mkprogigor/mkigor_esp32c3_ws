@@ -1,7 +1,7 @@
 /**
  * @brief	A small Arduino project: Easy DIY weather station on esp32-C3, BME280, BME680, VEML7700.
  * @author	Igor Mkprog, mkprogigor@gmail.com
- * @version	V1.1	@date	10.10.2025
+ * @version	V1.1	@date	08.11.2025
  * 
  * @remarks	Glossary, abbreviations used in the module. Name has small or capital letters ("camelCase"),
  *	and consist only 2 or 1 symbol '_', that divide it in => prefix + name + suffix.
@@ -28,7 +28,8 @@
 #include <mkigor_BMxx80.h>
 #include <mkigor_std.h>
 
-//#define DEBUG_EN		///	uncoment it for debug info
+//#define DEBUG_EN	///	uncoment it for debug info
+//#define LOCAL_TEST	///	uncoment it for local test (without ThingSpeak.com)
 
 WiFiClient			wifi_client;
 cl_VEML7700			veml;
@@ -78,7 +79,8 @@ void gf_readData() {
 	lv_measDur = millis() - lv_measStart;
 	printf("BME280 measuring TPHG time = %d\n", lv_measDur);
 	gv_stru_tph = bme2.readTPH();
-	printf("BME280 T:%f, P:%f, H:%f\n\n", gv_stru_tph.temp1, gv_stru_tph.pres1, gv_stru_tph.humi1);
+	printf("BME280 T:%.2f, P:%.2f, H:%.2f\n", 
+		round(gv_stru_tph.temp1*10)/10.0, round(gv_stru_tph.pres1), round(gv_stru_tph.humi1) );
 
 	bme6.initGasPointX(0, 350, 100, (int16_t)gv_stru_tph.temp1);
 	bme6.do1Meas();
@@ -90,7 +92,8 @@ void gf_readData() {
 	lv_measDur = millis() - lv_measStart;
 	printf("BME680 measuring TPHG time = %d\n", lv_measDur);
 	gv_stru_tphg = bme6.readTPHG();
-	printf("BME680 T:%f, P:%f, H:%f, G:%f\n\n", gv_stru_tphg.temp1, gv_stru_tphg.pres1, gv_stru_tphg.humi1, gv_stru_tphg.gasr1);
+	printf("BME680 T:%.2f, P:%.2f, H:%.2f, G:%.2f\n", 
+		round(gv_stru_tphg.temp1*10)/10.0, round(gv_stru_tphg.pres1), round(gv_stru_tphg.humi1), round(gv_stru_tphg.gasr1*10)/10.0 );
 
 	gv_lux = veml.readAW();
 	delay(1000);
@@ -98,9 +101,9 @@ void gf_readData() {
 	GTidx_stru_t lv_gtIdx = veml.readGainTime();
 	gv_luxGT = lv_gtIdx.idxGain1 << 4 | lv_gtIdx.idxTime1;
 
-	gv_vbat = (analogRead(A1) * gv_vbat_coef) / 4096;
+	gv_vbat = round((analogRead(A1) * gv_vbat_coef) / 4096.0 * 100.0) / 100.0;
 	
-	printf("Lux:%d, Lux idx GT:0x%X, Vbat: %f\n\n", gv_lux.als1, gv_luxGT, gv_vbat);
+	printf("Lux ALS:%i, Lux WHITE:%i, Lux idx GT:0x%X, Vbat: %f\n", gv_lux.als1, gv_lux.whi1, gv_luxGT, gv_vbat);
 }
 
 /**	@brief  Send all data and status info to thingspeak.com	*/
@@ -143,13 +146,17 @@ void gf_send2ts() {
 		lv_status[21] = mkistdf_byte2char(gv_luxGT);
 		Serial.println(lv_status);
 
+		gv_stru_tph.temp1  = round(gv_stru_tph.temp1 *10.0)/10.0;
+		gv_stru_tphg.temp1 = round(gv_stru_tphg.temp1*10.0)/10.0;
+		gv_stru_tphg.gasr1 = round(gv_stru_tphg.gasr1*10.0)/10.0;
+
 		ThingSpeak.setStatus(lv_status);
 		ThingSpeak.setField(1, gv_stru_tph.temp1); // set the fields with the values
-		ThingSpeak.setField(2, gv_stru_tph.pres1);
-		ThingSpeak.setField(3, gv_stru_tph.humi1);
+		ThingSpeak.setField(2, round(gv_stru_tph.pres1) );
+		ThingSpeak.setField(3, round(gv_stru_tph.humi1) );
 		ThingSpeak.setField(4, gv_stru_tphg.temp1);
-		ThingSpeak.setField(5, gv_stru_tphg.pres1);
-		ThingSpeak.setField(6, gv_stru_tphg.humi1);
+		ThingSpeak.setField(5, round(gv_stru_tphg.pres1) );
+		ThingSpeak.setField(6, round(gv_stru_tphg.humi1) );
 		ThingSpeak.setField(7, float(gv_lux.als1));
 		ThingSpeak.setField(8, gv_stru_tphg.gasr1);
 
@@ -209,7 +216,7 @@ void setup() {
 	}
 	bme6.begin(cd_FIL_x2, cd_OS_x16, cd_OS_x16, cd_OS_x16);
 	// Init ALL 10 heat set point
-	for (uint8_t i = 0; i < 10; i++) bme6.initGasPointX(i, 250 + i * 10, 60 + i * 10);
+	for (uint8_t i = 0; i < 10; i++) bme6.initGasPointX(i, 260 + i * 10, 60 + i * 10);
 #ifdef DEBUG_EN
 	printf("10 set Points = idac_heat_, res_heat_, gas_wait_ :\n");
 	for (uint8_t i = 0; i < 10; i++) printf("Heat Point %d = %d %d %d\n", i, bme6.readReg(0x50 + i), bme6.readReg(0x5A + i), bme6.readReg(0x64 + i));
@@ -220,9 +227,6 @@ void setup() {
 
 	configTime(3600, 3600, "pool.ntp.org");   // init time.h win NTP server, +1 GMT & +1 summer time
 
-	gv_sleep_time = 600000000;    //  Light sleep mode time = 600 sec = 10 min
-	// gv_sleep_time = 20000000;
-	esp_sleep_enable_timer_wakeup(gv_sleep_time);
 	Serial.println("========================= End Setup =======================\n");
 }
 
@@ -230,6 +234,21 @@ void setup() {
 
 /**	@brief  Standart Arduino function loop()	*/
 void loop() {
+#ifdef LOCAL_TEST
+	Serial.print("Ncount (0-255) = ");	Serial.println(gv_sleep_count);
+	veml.writeGainTime(2, 2);	// set gain = 1, time = 100 ms,
+	veml.wakeUp();				// in my case sensor doesn't have straight sunlight < 500 lux
+	delay(1000);
+	gf_readData();
+	veml.sleep();
+	gv_sleep_count++;
+	Serial.println();
+	delay(20000);
+#else
+	gv_sleep_time = 600000000;    //  Light sleep mode time = 600 sec = 10 min
+	// gv_sleep_time = 20000000;
+	esp_sleep_enable_timer_wakeup(gv_sleep_time);
+
 	Serial.print("Ncount (0-255) = ");	Serial.println(gv_sleep_count);
 	veml.writeGainTime(2, 2);	// set gain = 1, time = 100 ms,
 	veml.wakeUp();				// in my case sensor doesn't have straight sunlight < 500 lux
@@ -249,6 +268,7 @@ void loop() {
 	delay(200);
 	Serial.println("\nWakeUp from sleep mode.");
 	gv_sleep_count++;
+#endif
 }
 
 //=================================================================================================
